@@ -5,6 +5,9 @@
 #include <limits.h>
 #include <vector>
 #include <algorithm>
+#include <map>
+
+constexpr int prime_candidates[] = {2, 3, 5, 7, 11, 13, 17, 19, 23};
 
 class Integer {
 public:
@@ -413,7 +416,7 @@ public:
 
     static Integer random_inclusive(const Integer &inclusive, random_func func) {
         size_t n_bits = inclusive.bit_size();
-        while (true) {
+        while (1) {
             Integer result = random_bits(n_bits, func);
             if (result <= inclusive) return result;
         }
@@ -488,7 +491,7 @@ public:
             word base = 10,
             const char *alphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
     ) const {
-        if (size() == 0) {
+        if (words.empty()) {
             text.push_back('0');
         } else {
             Integer tmp(*this);
@@ -510,10 +513,18 @@ public:
         return negative ? -d : d;
     }
 
-    [[maybe_unused]] void print() {
-        std::vector<char> c;
-        export_to_array(c);
-        printf("%s", &c[0]);
+    [[maybe_unused]] std::string to_string() const {
+        if (words.empty()) return "0";
+        std::string result;
+        Integer tmp(*this);
+        while (tmp.size() != 0) {
+            word remainder;
+            div_mod_half_word(tmp, 10, tmp, remainder);
+            result.push_back('0' + remainder);
+        }
+        if (negative) result.push_back('-');
+        std::reverse(result.begin(), result.end());
+        return result;
     }
 
     [[maybe_unused]] Integer pow(size_t exponent) const {
@@ -539,6 +550,43 @@ public:
         return result;
     }
 
+    Integer power_modulo(Integer base, Integer exponent, Integer modulo) const {
+        Integer result = 1;
+        while (exponent != 0) {
+            if (exponent % 2 == 1) {
+                result *= base;
+                result %= modulo;
+            }
+            exponent >>= 1;
+            base *= base;
+            base %= modulo;
+        }
+        return result;
+    }
+
+    [[maybe_unused]] bool is_prime() const {
+        // make sure n < 3 317 044 064 679 887 385 961 981
+        if (*this < 2) return false;
+        for (int prime: prime_candidates) {
+            if (*this % prime == 0) return *this == prime;
+        }
+        Integer r = *this - 1;
+        int e = 0;
+        while (r % 2 == 0) {
+            r >>= 1, ++e;
+        }
+        for (int prime: prime_candidates) {
+            Integer x = power_modulo(prime, r, *this);
+            for (int t = 0; t < e && x > 1; ++t) {
+                Integer y = x * x % *this;
+                if (y == 1 && x != *this - 1) return false;
+                x = y;
+            }
+            if (x != 1) return false;
+        }
+        return true;
+    }
+
     [[maybe_unused]] Integer sqrt() const {
         Integer n = *this;
         int bit = bit_size();
@@ -555,6 +603,7 @@ public:
         }
         return result;
     }
+
 
     Integer &operator++() {
         add_word(1);
