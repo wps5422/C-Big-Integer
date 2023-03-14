@@ -1,11 +1,13 @@
 #pragma once
 
-#include <math.h>
-#include <stdint.h>
-#include <limits.h>
+#include <cmath>
+#include <cstdint>
+#include <climits>
 #include <vector>
 #include <algorithm>
 #include <map>
+#include <string>
+#include <cstdlib>
 
 constexpr int prime_candidates[] = {2, 3, 5, 7, 11, 13, 17, 19, 23};
 
@@ -14,7 +16,7 @@ public:
     using word = unsigned long long int;
 
     std::vector<word> words;
-    bool negative = false;
+    bool is_negative = false;
 
     static word char_to_word(char c) {
         if (c >= '0' && c <= '9') return c - '0';
@@ -24,7 +26,7 @@ public:
     }
 
     static word word_gcd(word a, word b) {
-        while (1) {
+        while (true) {
             if (a == 0) return b;
             b %= a;
             if (b == 0) return a;
@@ -32,35 +34,35 @@ public:
         }
     }
 
-    Integer() : negative(false) {}
+    Integer() : is_negative(false) {}
 
-    Integer(size_t n, word w, bool negative = false) : words(n, w), negative(negative) {}
+    Integer(size_t n, word w, bool negative = false) : words(n, w), is_negative(negative) {}
 
-    [[maybe_unused]] Integer(const word *a, const word *b, bool negative = false) : words(a, b), negative(negative) {}
+    [[maybe_unused]] Integer(const word *a, const word *b, bool negative = false) : words(a, b),
+                                                                                    is_negative(negative) {}
 
     Integer(const Integer &a) {
         words = a.words;
-        negative = a.negative;
+        is_negative = a.is_negative;
     }
 
-    Integer &operator=(const Integer &a) {
-        words = a.words;
-        negative = a.negative;
-        return *this;
-    }
+    Integer &operator=(const Integer &a) = default;
 
-    Integer(int i) : negative(i < 0) {
-        for (unsigned u = std::abs(i); u;) {
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "google-explicit-constructor"
+    Integer(int64_t i) : is_negative(i < 0) {
+        auto u = std::abs(i);
+        while (u != 0) {
             words.push_back(u);
-            for (size_t j = 0; j < 64; j++) u >>= 1;
+            for (int j = 0; j < 64; j++) u >>= 1;
         }
     }
+#pragma clang diagnostic pop
 
-    [[maybe_unused]] Integer(const char *c, word base = 10, char **end_ptr = NULL) : negative(false) {
-        // read sign
+    [[maybe_unused]] explicit Integer(const char *c, word base = 10, char **end_ptr = nullptr) : is_negative(false) {
         if (*c == '-') {
             c++;
-            negative = true;
+            is_negative = true;
         }
         // read digits
         for (; *c; c++) {
@@ -72,20 +74,14 @@ public:
         if (end_ptr) *end_ptr = (char *) c;
     }
 
-    size_t size() const {
-        return words.size();
-    }
+    size_t size() const { return words.size(); }
 
-    word &operator[](size_t i) {
-        return words[i];
-    }
+    word &operator[](size_t i) { return words[i]; }
 
-    const word &operator[](size_t i) const {
-        return words[i];
-    }
+    const word &operator[](size_t i) const { return words[i]; }
 
     Integer &set_negative(bool b) {
-        this->negative = b;
+        this->is_negative = b;
         return *this;
     }
 
@@ -125,9 +121,9 @@ public:
 
     static int cmp(const Integer &a, const Integer &b) {
         if (a.size() == 0 && b.size() == 0) return 0;
-        if (!a.negative && !b.negative) return +cmp_abs(a, b);
-        if (a.negative && b.negative) return -cmp_abs(a, b);
-        return a.negative && !b.negative ? -1 : +1;
+        if (!a.is_negative && !b.is_negative) return +cmp_abs(a, b);
+        if (a.is_negative && b.is_negative) return -cmp_abs(a, b);
+        return a.is_negative && !b.is_negative ? -1 : +1;
     }
 
     static size_t word_bit_size(word a) {
@@ -140,9 +136,7 @@ public:
         return 64;
     }
 
-    static word add_carry(word *a, word b) {
-        return (*a += b) < b;
-    }
+    static word add_carry(word *a, word b) { return (*a += b) < b; }
 
     static word sub_carry(word *a, word b) {
         word tmp = *a;
@@ -188,7 +182,7 @@ public:
 
     static Integer mul_long(const Integer &a, const Integer &b) {
         size_t na = a.size(), nb = b.size(), nc = na + nb + 1;
-        Integer c(nc, 0, a.negative ^ b.negative), carries(nc, 0);
+        Integer c(nc, 0, a.is_negative ^ b.is_negative), carries(nc, 0);
         for (size_t ia = 0; ia < na; ia++) {
             for (size_t ib = 0; ib < nb; ib++) {
                 size_t i = ia + ib, j = i + 1;
@@ -200,7 +194,9 @@ public:
         return add_unsigned_overwrite(c, carries).truncate();
     }
 
-    static Integer mul_karatsuba(const Integer &a, const Integer &b) {
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "misc-no-recursion"
+    static Integer karatsuba_multiple(const Integer &a, const Integer &b) {
         size_t na = a.size(), nb = b.size(), n = std::max(na, nb), m2 = n / 2 + (n & 1);
         Integer a_parts[2], b_parts[2];
         split(a, a_parts, 2, m2);
@@ -216,14 +212,14 @@ public:
         result += z0;
         return result;
     }
+#pragma clang diagnostic pop
 
-    static Integer mul(const Integer &a, const Integer &b) {
-        size_t karatsuba_threshold = 20;
-        if (a.size() > karatsuba_threshold && b.size() > karatsuba_threshold) {
-            return mul_karatsuba(a, b);
-        }
-        return mul_long(a, b);
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "misc-no-recursion"
+    static Integer multiple(const Integer &a, const Integer &b) {
+        return (a.size() > 20 && b.size() > 20 ? karatsuba_multiple(a, b) : mul_long(a, b));
     }
+#pragma clang diagnostic pop
 
     static Integer add_signed(const Integer &a, bool a_negative, const Integer &b, bool b_negative) {
         if (a_negative == b_negative) return add_unsigned(a, b).set_negative(a_negative);
@@ -284,7 +280,7 @@ public:
         quotient = 0;
         remainder = generator;
         if (cmp_abs(remainder, denominator) >= 0) {
-            int n = generator.bit_size() - denominator.bit_size();
+            size_t n = generator.bit_size() - denominator.bit_size();
             denominator <<= n;
             for (; n >= 0; n--) {
                 if (cmp_abs(remainder, denominator) >= 0) {
@@ -294,8 +290,8 @@ public:
                 denominator >>= 1;
             }
         }
-        quotient.set_negative(generator.negative ^ denominator.negative);
-        remainder.set_negative(generator.negative);
+        quotient.set_negative(generator.is_negative ^ denominator.is_negative);
+        remainder.set_negative(generator.is_negative);
     }
 
     static void div_mod_half_word(const Integer &generator, word denominator, Integer &quotient, word &remainder) {
@@ -308,10 +304,20 @@ public:
             word parts[2];
             parts[0] = src_word >> 64 / 2;
             parts[1] = src_word & UINT_MAX;
-
-            for (size_t j = 0; j < 2; j++) {
+            {
                 remainder <<= 64 / 2;
-                remainder |= parts[j];
+                remainder |= parts[0];
+
+                word div_word = remainder / denominator;
+                word mod_word = remainder % denominator;
+                remainder = mod_word;
+
+                dst_word <<= 64 / 2;
+                dst_word |= div_word;
+            }
+            {
+                remainder <<= 64 / 2;
+                remainder |= parts[1];
 
                 word div_word = remainder / denominator;
                 word mod_word = remainder % denominator;
@@ -324,7 +330,7 @@ public:
             dst[i] = dst_word;
         }
 
-        quotient = dst.truncate().set_negative(generator.negative);
+        quotient = dst.truncate().set_negative(generator.is_negative);
     }
 
     static void split(const Integer &a, Integer *parts, size_t n_parts, size_t n) {
@@ -360,23 +366,23 @@ public:
     }
 
     static Integer add(const Integer &a, const Integer &b) {
-        Integer result = add_signed(a, a.negative, b, b.negative);
+        Integer result = add_signed(a, a.is_negative, b, b.is_negative);
         return result;
     }
 
     static Integer sub(const Integer &a, const Integer &b) {
-        Integer result = add_signed(a, a.negative, b, !b.negative);
+        Integer result = add_signed(a, a.is_negative, b, !b.is_negative);
         return result;
     }
 
     [[maybe_unused]] static Integer gcd(const Integer &a0, const Integer &b0) {
 
         if (a0.size() == 1 && b0.size() == 1) {
-            return Integer(1, word_gcd(a0[0], b0[0]));
+            return {1, word_gcd(a0[0], b0[0])};
         }
 
         Integer a(a0), b(b0);
-        a.negative = b.negative = false;
+        a.is_negative = b.is_negative = false;
 
         if (a.size() == 0) return b0;
         if (b.size() == 0) return a0;
@@ -405,7 +411,7 @@ public:
         size_t n_words = n_bits / 64 + (partial_bits > 0);
         size_t n_bytes = n_words * sizeof(word);
         Integer result(n_words, 0);
-        uint8_t *bytes = (uint8_t *) &result[0];
+        auto *bytes = (uint8_t *) &result[0];
         func(bytes, n_bytes);
         if (partial_bits) {
             size_t too_many_bits = 64 - partial_bits;
@@ -416,7 +422,7 @@ public:
 
     static Integer random_inclusive(const Integer &inclusive, random_func func) {
         size_t n_bits = inclusive.bit_size();
-        while (1) {
+        while (true) {
             Integer result = random_bits(n_bits, func);
             if (result <= inclusive) return result;
         }
@@ -500,7 +506,7 @@ public:
                 div_mod_half_word(tmp, base, tmp, remainder);
                 text.push_back(alphabet[remainder]);
             }
-            if (negative) text.push_back('-');
+            if (is_negative) text.push_back('-');
             std::reverse(text.begin(), text.end());
         }
         text.push_back('\0');
@@ -509,8 +515,11 @@ public:
     [[maybe_unused]] double to_double() const {
         if (size() == 0) return 0.0;
         double d = 0.0, base = ::pow(2.0, 64);
-        for (size_t i = size(); i-- > 0;) d = d * base + (*this)[i];
-        return negative ? -d : d;
+        for (size_t i = size(); i-- > 0;) {
+            d *= base;
+            d += (double) (*this)[i]; // ???
+        }
+        return is_negative ? -d : d;
     }
 
     [[maybe_unused]] std::string to_string() const {
@@ -520,9 +529,9 @@ public:
         while (tmp.size() != 0) {
             word remainder;
             div_mod_half_word(tmp, 10, tmp, remainder);
-            result.push_back('0' + remainder);
+            result.push_back(char('0' + remainder));
         }
-        if (negative) result.push_back('-');
+        if (is_negative) result.push_back('-');
         std::reverse(result.begin(), result.end());
         return result;
     }
@@ -550,7 +559,7 @@ public:
         return result;
     }
 
-    Integer power_modulo(Integer base, Integer exponent, Integer modulo) const {
+    static Integer power_modulo(Integer base, Integer exponent, const Integer &modulo) {
         Integer result = 1;
         while (exponent != 0) {
             if (exponent % 2 == 1) {
@@ -589,7 +598,7 @@ public:
 
     [[maybe_unused]] Integer sqrt() const {
         Integer n = *this;
-        int bit = bit_size();
+        int bit = (int) bit_size();
         if (bit & 1) bit ^= 1;
         Integer result = 0;
         for (; bit >= 0; bit -= 2) {
@@ -614,7 +623,7 @@ public:
 
     Integer &operator-=(const Integer &b) { return *this = sub(*this, b); }
 
-    Integer &operator*=(const Integer &b) { return *this = mul(*this, b); }
+    Integer &operator*=(const Integer &b) { return *this = multiple(*this, b); }
 
     Integer &operator/=(const Integer &b) { return *this = div(*this, b); }
 
@@ -636,13 +645,16 @@ public:
 
     Integer operator-(const Integer &b) const { return sub(*this, b); }
 
-    Integer operator*(const Integer &b) const { return mul(*this, b); }
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "misc-no-recursion"
+    Integer operator*(const Integer &b) const { return multiple(*this, b); }
+#pragma clang diagnostic pop
 
     Integer operator/(const Integer &b) const { return div(*this, b); }
 
     Integer operator%(const Integer &b) const { return mod(*this, b); }
 
-    Integer operator-() const { return Integer(*this).set_negative(!negative); }
+    Integer operator-() const { return Integer(*this).set_negative(!is_negative); }
 
     Integer operator>>(size_t n_bits) const { return Integer(*this) >>= n_bits; }
 
