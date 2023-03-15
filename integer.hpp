@@ -6,11 +6,8 @@
 #pragma warning(disable: 4267)
 #endif
 
-#include <cstdint>
 #include <climits>
 #include <vector>
-#include <algorithm>
-#include <map>
 #include <string>
 #include <cstdlib>
 
