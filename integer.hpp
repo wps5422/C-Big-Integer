@@ -1,6 +1,11 @@
 #pragma once
+#ifdef _MSC_VER
+#include <sstream>
+#pragma warning(disable: 5051)
+#pragma warning(disable: 4068)
+#pragma warning(disable: 4267)
+#endif
 
-#include <cmath>
 #include <cstdint>
 #include <climits>
 #include <vector>
@@ -47,7 +52,7 @@ public:
 
 #pragma clang diagnostic pop
 
-    [[maybe_unused]] void read(const std::string &s) {
+    void read(const std::string &s) {
         words.clear();
         this->is_negative = false;
         uint32_t i = 0, end = s.size();
@@ -62,17 +67,6 @@ public:
     }
 
     [[maybe_unused]] explicit Integer(const std::string &s) : is_negative(false) { read(s); }
-
-    [[maybe_unused]] explicit Integer(const char *c) : is_negative(false) {
-        if (*c == '-') {
-            c++;
-            is_negative = true;
-        }
-        for (; *c; c++) {
-            mul_word(10);
-            add_word(*c - '0');
-        }
-    }
 
     [[nodiscard]] inline size_t size() const { return words.size(); }
 
@@ -485,3 +479,6 @@ public:
     }
 };
 
+int main() {
+    return 0;
+}
