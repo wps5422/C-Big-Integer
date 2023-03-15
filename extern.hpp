@@ -2,6 +2,45 @@
 #include "integer.h"
 
 class Integer{
+    [[maybe_unused]] void export_to_array(
+            std::vector<char> &text,
+            word base = 10,
+            const char *alphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
+    ) const {
+        if (words.empty()) {
+            text.push_back('0');
+        } else {
+            Integer tmp(*this);
+            while (tmp.size() > 0) {
+                word remainder;
+                div_mod_half_word(tmp, base, tmp, remainder);
+                text.push_back(alphabet[remainder]);
+            }
+            if (is_negative) text.push_back('-');
+            std::reverse(text.begin(), text.end());
+        }
+        text.push_back('\0');
+    }
+
+    [[maybe_unused]] [[nodiscard]] double to_double() const {
+        if (size() == 0) return 0.0;
+        double d = 0.0, base = ::pow(2.0, 64);
+        for (size_t i = size(); i-- > 0;) {
+            d *= base;
+            d += (double) (*this)[i]; // ???
+        }
+        return is_negative ? -d : d;
+    }
+  
+   [[maybe_unused]] void clr_bit(size_t i) {
+        size_t i_word = i / 64;
+        size_t i_bit = i % 64;
+        if (i_word >= size()) return;
+        word mask = 1;
+        mask <<= i_bit;
+        (*this)[i_word] &= ~mask;
+    }
+  
   static word word_gcd(word a, word b) {
         while (true) {
             if (a == 0) return b;
@@ -80,4 +119,23 @@ class Integer{
     random_both_inclusive(const Integer &inclusive_min_val, const Integer &inclusive_max_val, random_func func) {
         return inclusive_min_val + random_inclusive(inclusive_max_val - inclusive_min_val, func);
     }
+    
+    [[maybe_unused]] [[nodiscard]] Integer sqrt() const {
+        Integer n = *this;
+        int bit = (int) bit_size();
+        if (bit & 1) bit ^= 1;
+        Integer result = 0;
+        for (; bit >= 0; bit -= 2) {
+            Integer tmp = result;
+            tmp.set_bit(bit);
+            if (n >= tmp) {
+                n -= tmp;
+                result.set_bit(bit + 1);
+            }
+            result >>= 1;
+        }
+        return result;
+    }
+  
+    
 }
