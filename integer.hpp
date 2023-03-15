@@ -279,7 +279,7 @@ public:
         quotient = 0;
         remainder = generator;
         if (cmp_abs(remainder, denominator) >= 0) {
-            size_t n = generator.bit_size() - denominator.bit_size();
+            int n = int(generator.bit_size() - denominator.bit_size());
             denominator <<= n;
             for (; n >= 0; n--) {
                 if (cmp_abs(remainder, denominator) >= 0) {
