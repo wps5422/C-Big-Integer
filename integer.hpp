@@ -9,12 +9,12 @@
 #include <string>
 #include <cstdlib>
 
-constexpr int prime_candidates[] = {2, 3, 5, 7, 11, 13, 17, 19, 23};
+
 
 class Integer {
 public:
     using word = unsigned long long int;
-
+    static constexpr int prime_candidates[] = {2, 3, 5, 7, 11, 13, 17, 19, 23};
     std::vector<word> words;
     bool is_negative = false;
 
@@ -74,7 +74,7 @@ public:
         if (end_ptr) *end_ptr = (char *) c;
     }
 
-    size_t size() const { return words.size(); }
+    [[nodiscard]] size_t size() const { return words.size(); }
 
     word &operator[](size_t i) { return words[i]; }
 
@@ -90,14 +90,14 @@ public:
         return *this;
     }
 
-    size_t bit_size() const {
+    [[nodiscard]] size_t bit_size() const {
         if (size() == 0) return 0;
         size_t last = size() - 1;
         size_t result = word_bit_size((*this)[last]) + last * 64;
         return result;
     }
 
-    size_t count_trailing_zeros() const {
+    [[nodiscard]] size_t count_trailing_zeros() const {
         for (size_t i = 0; i < size(); i++) {
             word w = (*this)[i];
             if (w) return word_count_trailing_zeros(w) + i * 64;
@@ -454,7 +454,7 @@ public:
         return *this;
     }
 
-    word get_bit(size_t i) const {
+    [[nodiscard]] word get_bit(size_t i) const {
         size_t i_word = i / 64;
         size_t i_bit = i % 64;
         if (i_word >= size()) return 0;
@@ -512,7 +512,7 @@ public:
         text.push_back('\0');
     }
 
-    [[maybe_unused]] double to_double() const {
+    [[maybe_unused]] [[nodiscard]] double to_double() const {
         if (size() == 0) return 0.0;
         double d = 0.0, base = ::pow(2.0, 64);
         for (size_t i = size(); i-- > 0;) {
@@ -522,7 +522,7 @@ public:
         return is_negative ? -d : d;
     }
 
-    [[maybe_unused]] std::string to_string() const {
+    [[maybe_unused]] [[nodiscard]] std::string to_string() const {
         if (words.empty()) return "0";
         std::string result;
         Integer tmp(*this);
@@ -536,19 +536,19 @@ public:
         return result;
     }
 
-    [[maybe_unused]] Integer pow(size_t exponent) const {
+    [[maybe_unused]] [[nodiscard]] Integer pow(size_t exponent) const {
         Integer result(1), p(*this);
         for (; exponent; exponent >>= 1) {
             if (exponent & 1) {
-                result = result * p;
-                exponent--;
+                result *= p;
+                --exponent;
             }
-            p = p * p;
+            p *= p;
         }
         return result;
     }
 
-    [[maybe_unused]] Integer mod_pow(Integer exponent, const Integer &modulus) const {
+    [[maybe_unused]] [[nodiscard]] Integer mod_pow(Integer exponent, const Integer &modulus) const {
         Integer result(1), base = (*this) % modulus;
         for (; exponent.size() > 0; exponent >>= 1) {
             if (exponent.get_bit(0)) {
@@ -573,7 +573,7 @@ public:
         return result;
     }
 
-    [[maybe_unused]] bool is_prime() const {
+    [[maybe_unused]] [[nodiscard]] bool is_prime() const {
         // make sure n < 3 317 044 064 679 887 385 961 981
         if (*this < 2) return false;
         for (int prime: prime_candidates) {
@@ -596,7 +596,7 @@ public:
         return true;
     }
 
-    [[maybe_unused]] Integer sqrt() const {
+    [[maybe_unused]] [[nodiscard]] Integer sqrt() const {
         Integer n = *this;
         int bit = (int) bit_size();
         if (bit & 1) bit ^= 1;
