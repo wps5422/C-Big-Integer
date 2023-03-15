@@ -104,9 +104,7 @@ public:
         }
         for (size_t i = na; i-- > 0;) {
             word wa = a[i], wb = b[i];
-            if (wa != wb) {
-                return wa < wb ? -1 : +1;
-            }
+            if (wa != wb) return wa < wb ? -1 : +1;
         }
         return 0;
     }
@@ -251,9 +249,7 @@ public:
         size_t n = old_size + n_words + (n_bits != 0);
         words.resize(n);
         if (n_bits == 0) {
-            for (size_t i = n; i-- > n_words;) {
-                (*this)[i] = (*this)[i - n_words];
-            }
+            for (size_t i = n; i-- > n_words;) (*this)[i] = (*this)[i - n_words];
         } else {
             word lo, hi = 0;
             for (size_t i = n - 1; i > n_words; i--) {
@@ -298,22 +294,18 @@ public:
             {
                 remainder <<= 64 / 2;
                 remainder |= parts[0];
-
                 word div_word = remainder / denominator;
                 word mod_word = remainder % denominator;
                 remainder = mod_word;
-
                 dst_word <<= 64 / 2;
                 dst_word |= div_word;
             }
             {
                 remainder <<= 64 / 2;
                 remainder |= parts[1];
-
                 word div_word = remainder / denominator;
                 word mod_word = remainder % denominator;
                 remainder = mod_word;
-
                 dst_word <<= 64 / 2;
                 dst_word |= div_word;
             }
@@ -388,9 +380,7 @@ public:
 
     Integer &add_word(word carry) {
         if (words.empty()) words.resize(1);
-        for (size_t i = 0; i < words.size() && carry; i++) {
-            carry = add_carry(&(*this)[i], carry);
-        }
+        for (size_t i = 0; i < words.size() && carry; i++) carry = add_carry(&(*this)[i], carry);
         if (carry) words.push_back(carry);
         return truncate();
     }
@@ -483,12 +473,8 @@ public:
             div_mod_half_word(tmp, 10, tmp, remainder);
             result.push_back(char('0' + remainder));
         }
-        if (v.is_negative) {
-            putchar('-');
-        }
-        for (int i = (int) result.size() - 1; i >= 0; --i) {
-            putchar(result[i]);
-        }
+        if (v.is_negative) putchar('-');
+        for (int i = (int) result.size() - 1; i >= 0; --i) putchar(result[i]);
         return stream;
     }
 
