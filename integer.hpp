@@ -132,7 +132,7 @@ public:
     }
 
     static size_t word_count_trailing_zeros(word a) {
-        for (int i = 0; i < (int) 64; i++) if ((a >> i) & 1) return i;
+        for (size_t i = 0; i < 64; i++) if ((a >> i) & 1) return i;
         return 64;
     }
 
@@ -144,13 +144,12 @@ public:
     }
 
     static word word_mul_hi(word a, word b) {
-        size_t n = 64 / 2;
-        word a_hi = a >> n;
+        word a_hi = a >> 32;
         word a_lo = a & UINT_MAX;
-        word b_hi = b >> n;
+        word b_hi = b >> 32;
         word b_lo = b & UINT_MAX;
-        word tmp = ((a_lo * b_lo) >> n) + a_hi * b_lo;
-        tmp = (tmp >> n) + ((a_lo * b_hi + (tmp & UINT_MAX)) >> n);
+        word tmp = ((a_lo * b_lo) >> 32) + a_hi * b_lo;
+        tmp = (tmp >> 32) + ((a_lo * b_hi + (tmp & UINT_MAX)) >> 32);
         return tmp + a_hi * b_hi;
     }
 
@@ -534,6 +533,25 @@ public:
         if (is_negative) result.push_back('-');
         std::reverse(result.begin(), result.end());
         return result;
+    }
+    [[maybe_unused]] void print() const {
+        if (words.empty()){
+            putchar('0');
+            return;
+        }
+        std::string result;
+        Integer tmp(*this);
+        while (tmp.size() != 0) {
+            word remainder;
+            div_mod_half_word(tmp, 10, tmp, remainder);
+            result.push_back(char('0' + remainder));
+        }
+        if (is_negative){
+            putchar('-');
+        }
+        for(int i = (int)result.size() - 1; i >= 0; --i){
+            putchar(result[i] + '0');
+        }
     }
 
     [[maybe_unused]] [[nodiscard]] Integer pow(size_t exponent) const {
