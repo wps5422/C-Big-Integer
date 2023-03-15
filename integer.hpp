@@ -74,7 +74,7 @@ public:
         }
     }
 
-    explicit Integer(const std::string &s) : is_negative(false) {
+    [[maybe_unused]] explicit Integer(const std::string &s) : is_negative(false) {
         read(s);
     }
 
@@ -706,9 +706,10 @@ public:
         return stream;
     }
 
-    void operator*=(int v) {
+    template<class A>
+    void operator*=(A v) {
         is_negative = (v < 0);
-        mul_word(abs(v));
+        mul_word((word) v);
     }
 };
 
