@@ -10,7 +10,9 @@
 #include <vector>
 #include <string>
 #include <cstdlib>
-
+#include <iostream>
+#include <cassert>
+#include <chrono>
 
 class Integer {
 public:
@@ -34,6 +36,7 @@ public:
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "google-explicit-constructor"
+    static constexpr char MIN_NUMERIC_CHARACTER = '0';
 
     template<class A>
     Integer(A i) {
@@ -59,7 +62,7 @@ public:
         }
         for (; i != end; ++i) {
             mul_word(10);
-            add_word(s[i] - '0');
+            add_word(s[i] - MIN_NUMERIC_CHARACTER);
         }
     }
 
@@ -70,6 +73,10 @@ public:
     inline word &operator[](size_t i) { return words[i]; }
 
     const word &operator[](size_t i) const { return words[i]; }
+
+    inline bool is_zero() const {
+        return words.empty();
+    }
 
     Integer &set_negative(bool b) {
         this->is_negative = b;
@@ -100,11 +107,11 @@ public:
         return 0;
     }
 
-    static int cmp(const Integer &a, const Integer &b) {
+    static inline int cmp(const Integer &a, const Integer &b) {
         if (a.size() == 0 && b.size() == 0) return 0;
-        if (!a.is_negative && !b.is_negative) return +cmp_abs(a, b);
-        if (a.is_negative && b.is_negative) return -cmp_abs(a, b);
-        return a.is_negative && !b.is_negative ? -1 : +1;
+        else if (!a.is_negative && !b.is_negative) return +cmp_abs(a, b);
+        else if (a.is_negative && b.is_negative) return -cmp_abs(a, b);
+        else return a.is_negative && !b.is_negative ? -1 : +1;
     }
 
     static size_t word_bit_size(word a) {
@@ -199,7 +206,6 @@ public:
     }
 
 #pragma clang diagnostic pop
-
 
     static Integer add_signed(const Integer &a, bool a_negative, const Integer &b, bool b_negative) {
         if (a_negative == b_negative) return add_unsigned(a, b).set_negative(a_negative);
@@ -383,7 +389,7 @@ public:
         while (tmp.size() != 0) {
             word remainder;
             div_mod_half_word(tmp, 10, tmp, remainder);
-            result.push_back(char('0' + remainder));
+            result.push_back(char(MIN_NUMERIC_CHARACTER + remainder));
         }
         if (is_negative) result.push_back('-');
         std::reverse(result.begin(), result.end());
@@ -408,9 +414,15 @@ public:
 
     Integer &operator*=(const Integer &b) { return *this = multiple(*this, b); }
 
-    Integer &operator/=(const Integer &b) { return *this = div(*this, b); }
+    Integer &operator/=(const Integer &b) {
+        assert(!b.is_zero());
+        return *this = div(*this, b);
+    }
 
-    Integer &operator%=(const Integer &b) { return *this = mod(*this, b); }
+    Integer &operator%=(const Integer &b) {
+        assert(!b.is_zero());
+        return *this = mod(*this, b);
+    }
 
     bool operator==(const Integer &b) const { return cmp(*this, b) == 0; }
 
@@ -435,9 +447,15 @@ public:
 
 #pragma clang diagnostic pop
 
-    Integer operator/(const Integer &b) const { return div(*this, b); }
+    Integer operator/(const Integer &b) const {
+        assert(!b.is_zero());
+        return div(*this, b);
+    }
 
-    Integer operator%(const Integer &b) const { return mod(*this, b); }
+    Integer operator%(const Integer &b) const {
+        assert(!b.is_zero());
+        return mod(*this, b);
+    }
 
     Integer operator-() const { return Integer(*this).set_negative(!is_negative); }
 
@@ -454,7 +472,7 @@ public:
 
     friend std::ostream &operator<<(std::ostream &stream, const Integer &v) {
         if (v.words.empty()) {
-            putchar('0');
+            putchar(MIN_NUMERIC_CHARACTER);
             return stream;
         }
         std::string result;
@@ -462,20 +480,36 @@ public:
         while (tmp.size() != 0) {
             word remainder;
             div_mod_half_word(tmp, 10, tmp, remainder);
-            result.push_back(char('0' + remainder));
+            result.push_back(char(MIN_NUMERIC_CHARACTER + remainder));
         }
         if (v.is_negative) putchar('-');
         for (int i = (int) result.size() - 1; i >= 0; --i) putchar(result[i]);
         return stream;
     }
 
-    template<class A>
-    void operator*=(A v) {
-        is_negative = (v < 0);
+    template<class type>
+    void operator*=(type v) {
+        if (v < 0) is_negative = !is_negative;
         mul_word((word) v);
     }
 };
 
+void test() {
+    using namespace std::chrono;
+    auto start = high_resolution_clock::now();
+    for (int j = 0; j < 5; ++j) {
+        Integer x = 1;
+        for (int i = 1; i < 5000; ++i) {
+            x *= i;
+        }
+    }
+    auto stop = high_resolution_clock::now();
+    auto duration = duration_cast<microseconds>(stop - start);
+
+    std::cout << "Time taken by calculation: "
+              << duration.count() / 5 << " microseconds" << std::endl;
+}
+
 int main() {
-    return 0;
+    test();
 }
