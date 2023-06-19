@@ -14,9 +14,10 @@
 #include <cassert>
 #include <chrono>
 
+
 class Integer {
 public:
-    using word = unsigned long long int;
+    using word = int64_t;
     std::vector<word> words;
     bool is_negative = false;
 
@@ -43,6 +44,12 @@ public:
         if (i < 0) {
             is_negative = true;
             i *= -1;
+            // (void) (i >= 0 || (_assert("i equals the minimum value of its type", __FILE__, 47), 0));
+            // #warning: When i < 0 and i equals the minimum value of its type,
+            // an infinite loop will occur because multiplying the minimum value by -1 results in the same value.
+            // Example: INT_MIN * -1 = INT_MIN, INT_MAX * -1 = INT_MAX
+            // You can use assert to check if i is still negative when multiplied by -1
+            // This can affect performance when the number is initialized through the constructor too many times. Please consider.
         }
         while (i != 0) {
             words.push_back(i);
@@ -494,22 +501,35 @@ public:
     }
 };
 
-void test() {
-    using namespace std::chrono;
-    auto start = high_resolution_clock::now();
-    for (int j = 0; j < 5; ++j) {
-        Integer x = 1;
-        for (int i = 1; i < 5000; ++i) {
-            x *= i;
-        }
-    }
-    auto stop = high_resolution_clock::now();
-    auto duration = duration_cast<microseconds>(stop - start);
-
-    std::cout << "Time taken by calculation: "
-              << duration.count() / 5 << " microseconds" << std::endl;
-}
-
 int main() {
-    test();
+    {
+        int x = -10;
+        Integer q = Integer(x);
+        std::cout << q << '\n';
+    }
+    {
+        int x = INT_MIN;
+        Integer q = Integer(x);
+        std::cout << q << '\n';
+    }
+    {
+        int x = INT_MAX;
+        Integer q = Integer(x);
+        std::cout << q << '\n';
+    }
+    {
+        auto x = LLONG_MAX;
+        Integer q = Integer(x);
+        std::cout << q << '\n';
+    }
+    {
+        auto x = LLONG_MIN;
+        Integer q = Integer(x);
+        std::cout << q << '\n';
+    }
+    {
+        auto x = ULONG_LONG_MAX;
+        Integer q = Integer(x);
+        std::cout << q << '\n';
+    }
 }
