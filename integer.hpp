@@ -1,6 +1,6 @@
+#pragma once
 #ifdef _MSC_VER
 #include <sstream>
-#include <cstdlib>
 #pragma warning(disable: 5051)
 #pragma warning(disable: 4068)
 #pragma warning(disable: 4267)
@@ -9,14 +9,14 @@
 #include <climits>
 #include <vector>
 #include <string>
+#include <cstdlib>
 #include <iostream>
 #include <cassert>
 #include <chrono>
 
-
 class Integer {
 public:
-    using word = int64_t;
+    using word = unsigned long long int;
     std::vector<word> words;
     bool is_negative = false;
 
@@ -34,6 +34,7 @@ public:
 
     Integer &operator=(const Integer &a) = default;
 
+
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "google-explicit-constructor"
     static constexpr char MIN_NUMERIC_CHARACTER = '0';
@@ -43,10 +44,6 @@ public:
         if (number < 0) {
             is_negative = true;
             number *= -1;
-            // (void) (number >= 0 || (_assert("number equals the minimum number of its type", __FILE__, 47), 0));
-            // #warning: When number < 0 and number equals the minimum number of its type,
-            // an infinite loop will occur because multiplying the minimum number by -1 results in the same number.
-            // Example: INT_MIN * -1 = INT_MIN, INT_MAX * -1 = INT_MAX
         }
         while (number != 0) {
             words.push_back(number);
@@ -58,7 +55,7 @@ public:
 
     void read(const std::string &s) {
         words.clear();
-        is_negative = false;
+        this->is_negative = false;
         uint32_t i = 0, end = s.size();
         if (s[i] == '-') {
             ++i;
@@ -72,7 +69,7 @@ public:
 
     [[maybe_unused]] explicit Integer(const std::string &s) : is_negative(false) { read(s); }
 
-    [[nodiscard]] inline size_t words_size() const { return words.size(); }
+    [[nodiscard]] inline size_t size() const { return words.size(); }
 
     inline word &operator[](size_t i) { return words[i]; }
 
@@ -91,8 +88,8 @@ public:
     }
 
     [[nodiscard]] size_t bit_size() const {
-        if (words_size() == 0) return 0;
-        size_t last = words_size() - 1;
+        if (size() == 0) return 0;
+        size_t last = size() - 1;
         size_t result = word_bit_size((*this)[last]) + last * 64;
         return result;
     }
@@ -104,7 +101,7 @@ public:
     }
 
     static inline int cmp(const Integer &a, const Integer &b) {
-        if (a.words_size() == 0 && b.words_size() == 0) return 0;
+        if (a.size() == 0 && b.size() == 0) return 0;
         else if (!a.is_negative && !b.is_negative) return +cmp_abs(a, b);
         else if (a.is_negative && b.is_negative) return -cmp_abs(a, b);
         else return a.is_negative && !b.is_negative ? -1 : +1;
@@ -123,17 +120,17 @@ public:
     }
 
     static word word_mul_hi(word a, word b) {
-        word a_high = a >> 32;
-        word a_low = a & UINT_MAX;
-        word b_high = b >> 32;
-        word b_low = b & UINT_MAX;
-        word tmp = ((a_low * b_low) >> 32) + a_high * b_low;
-        tmp = (tmp >> 32) + ((a_low * b_high + (tmp & UINT_MAX)) >> 32);
-        return tmp + a_high * b_high;
+        word a_hi = a >> 32;
+        word a_lo = a & UINT_MAX;
+        word b_hi = b >> 32;
+        word b_lo = b & UINT_MAX;
+        word tmp = ((a_lo * b_lo) >> 32) + a_hi * b_lo;
+        tmp = (tmp >> 32) + ((a_lo * b_hi + (tmp & UINT_MAX)) >> 32);
+        return tmp + a_hi * b_hi;
     }
 
     static Integer &add_unsigned_overwrite(Integer &a, const Integer &b) {
-        size_t i, na = a.words_size(), nb = b.words_size(), n = std::max(na, nb);
+        size_t i, na = a.size(), nb = b.size(), n = std::max(na, nb);
         a.words.resize(n);
         word carry = 0;
         for (i = 0; i < nb; i++) {
@@ -146,7 +143,7 @@ public:
     }
 
     static Integer &sub_unsigned_overwrite(Integer &a, const Integer &b) {
-        size_t i, na = a.words_size(), nb = b.words_size();
+        size_t i, na = a.size(), nb = b.size();
         word carry = 0;
         for (i = 0; i < nb; i++) {
             carry = sub_carry(&a[i], carry);
@@ -157,12 +154,11 @@ public:
     }
 
     static Integer native_multiple(const Integer &a, const Integer &b) {
-        size_t na = a.words_size(), nb = b.words_size(), nc = na + nb + 1;
+        size_t na = a.size(), nb = b.size(), nc = na + nb + 1;
         Integer c(nc, 0, a.is_negative ^ b.is_negative), carries(nc, 0);
         for (size_t ia = 0; ia < na; ia++) {
             for (size_t ib = 0; ib < nb; ib++) {
                 size_t i = ia + ib, j = i + 1;
-                // WARNING: Might overflow if word words_size is chosen too small
                 carries[i + 1] += add_carry(&c[i], a[ia] * b[ib]);
                 carries[j + 1] += add_carry(&c[j], word_mul_hi(a[ia], b[ib]));
             }
@@ -175,7 +171,7 @@ public:
 #pragma ide diagnostic ignored "misc-no-recursion"
 
     static Integer karatsuba_multiple(const Integer &a, const Integer &b) {
-        size_t na = a.words_size(), nb = b.words_size(), n = std::max(na, nb), m2 = n / 2 + (n & 1);
+        size_t na = a.size(), nb = b.size(), n = std::max(na, nb), m2 = n / 2 + (n & 1);
         Integer a_parts[2], b_parts[2];
         split(a, a_parts, 2, m2);
         split(b, b_parts, 2, m2);
@@ -198,7 +194,7 @@ public:
 #pragma ide diagnostic ignored "misc-no-recursion"
 
     static Integer multiple(const Integer &a, const Integer &b) {
-        return (a.words_size() > 20 && b.words_size() > 20 ? karatsuba_multiple(a, b) : native_multiple(a, b));
+        return (a.size() > 20 && b.size() > 20 ? karatsuba_multiple(a, b) : native_multiple(a, b));
     }
 
 #pragma clang diagnostic pop
@@ -212,25 +208,25 @@ public:
     Integer &operator>>=(size_t n_bits) {
         if (n_bits == 0) return *this;
         size_t n_words = n_bits / 64;
-        if (n_words >= words_size()) {
+        if (n_words >= size()) {
             words.resize(0);
             return *this;
         }
         n_bits %= 64;
         if (n_bits == 0) {
-            for (size_t i = 0; i < words_size() - n_words; i++) {
+            for (size_t i = 0; i < size() - n_words; i++) {
                 (*this)[i] = (*this)[i + n_words];
             }
         } else {
             word hi, lo = (*this)[n_words];
-            for (size_t i = 0; i < words_size() - n_words - 1; i++) {
+            for (size_t i = 0; i < size() - n_words - 1; i++) {
                 hi = (*this)[i + n_words + 1];
                 (*this)[i] = (hi << (64 - n_bits)) | (lo >> n_bits);
                 lo = hi;
             }
-            (*this)[words_size() - n_words - 1] = lo >> n_bits;
+            (*this)[size() - n_words - 1] = lo >> n_bits;
         }
-        words.resize(words_size() - n_words);
+        words.resize(size() - n_words);
         return truncate();
     }
 
@@ -238,7 +234,7 @@ public:
         if (n_bits == 0) return *this;
         size_t n_words = n_bits / 64;
         n_bits %= 64;
-        size_t old_size = words_size();
+        size_t old_size = size();
         size_t n = old_size + n_words + (n_bits != 0);
         words.resize(n);
         if (n_bits == 0) {
@@ -276,9 +272,9 @@ public:
 
     static void div_mod_half_word(const Integer &generator, word denominator, Integer &quotient, word &remainder) {
         remainder = 0;
-        Integer dst(generator.words_size(), 0);
+        Integer dst(generator.size(), 0);
 
-        for (size_t i = generator.words_size(); i-- > 0;) {
+        for (size_t i = generator.size(); i-- > 0;) {
             word dst_word = 0;
             word src_word = generator[i];
             word parts[2];
@@ -305,6 +301,7 @@ public:
 
             dst[i] = dst_word;
         }
+
         quotient = dst.truncate().set_negative(generator.is_negative);
     }
 
@@ -313,7 +310,7 @@ public:
         for (size_t k = 0; k < n_parts; k++) {
             Integer &part = parts[k];
             part.words.resize(n);
-            for (size_t j = 0; j < n && i < a.words_size(); j++) part[j] = a[i++];
+            for (size_t j = 0; j < n && i < a.size(); j++) part[j] = a[i++];
             part = part.truncate();
         }
     }
@@ -340,20 +337,26 @@ public:
         return sub_unsigned_overwrite(result, b);
     }
 
-    static Integer add(const Integer &a, const Integer &b) { return add_signed(a, a.is_negative, b, b.is_negative); }
+    static Integer add(const Integer &a, const Integer &b) {
+        Integer result = add_signed(a, a.is_negative, b, b.is_negative);
+        return result;
+    }
 
-    static Integer sub(const Integer &a, const Integer &b) { return add_signed(a, a.is_negative, b, !b.is_negative); }
+    static Integer sub(const Integer &a, const Integer &b) {
+        Integer result = add_signed(a, a.is_negative, b, !b.is_negative);
+        return result;
+    }
 
     Integer &set_bit(int i) {
         size_t i_word = i / 64, i_bit = i % 64;
-        if (words_size() <= i_word) words.resize(i_word + 1);
+        if (size() <= i_word) words.resize(i_word + 1);
         (*this)[i_word] |= ((word) 1) << i_bit;
         return *this;
     }
 
     Integer &mul_word(word b) {
         word carry = 0;
-        for (size_t i = 0; i < words_size(); i++) {
+        for (size_t i = 0; i < size(); i++) {
             word a = (*this)[i];
             word tmp = a * b;
             carry = add_carry(&tmp, carry);
@@ -375,7 +378,7 @@ public:
         if (words.empty()) return "0";
         std::string result;
         Integer tmp(*this);
-        while (tmp.words_size() != 0) {
+        while (tmp.size() != 0) {
             word remainder;
             div_mod_half_word(tmp, 10, tmp, remainder);
             result.push_back(char(MIN_NUMERIC_CHARACTER + remainder));
@@ -466,7 +469,7 @@ public:
         }
         std::string result;
         Integer tmp(v);
-        while (tmp.words_size() != 0) {
+        while (tmp.size() != 0) {
             word remainder;
             div_mod_half_word(tmp, 10, tmp, remainder);
             result.push_back(char(MIN_NUMERIC_CHARACTER + remainder));
@@ -482,3 +485,4 @@ public:
         mul_word((word) v);
     }
 };
+
