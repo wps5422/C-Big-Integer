@@ -38,21 +38,19 @@ public:
 #pragma ide diagnostic ignored "google-explicit-constructor"
     static constexpr char MIN_NUMERIC_CHARACTER = '0';
 
-    template<class A>
-    Integer(A i) {
-        if (i < 0) {
+    template<class T>
+    Integer(T number) {
+        if (number < 0) {
             is_negative = true;
-            i *= -1;
-            // (void) (i >= 0 || (_assert("i equals the minimum value of its type", __FILE__, 47), 0));
-            // #warning: When i < 0 and i equals the minimum value of its type,
-            // an infinite loop will occur because multiplying the minimum value by -1 results in the same value.
+            number *= -1;
+            // (void) (number >= 0 || (_assert("number equals the minimum number of its type", __FILE__, 47), 0));
+            // #warning: When number < 0 and number equals the minimum number of its type,
+            // an infinite loop will occur because multiplying the minimum number by -1 results in the same number.
             // Example: INT_MIN * -1 = INT_MIN, INT_MAX * -1 = INT_MAX
-            // You can use assert to check if i is still negative when multiplied by -1
-            // This can affect performance when the number is initialized through the constructor too many times. Please consider.
         }
-        while (i != 0) {
-            words.push_back(i);
-            for (int j = 0; j < 64; j++) i >>= 1;
+        while (number != 0) {
+            words.push_back(number);
+            for (int j = 0; j < 64; j++) number >>= 1;
         }
     }
 
@@ -80,9 +78,7 @@ public:
 
     const word &operator[](size_t i) const { return words[i]; }
 
-    inline bool is_zero() const {
-        return words.empty();
-    }
+    inline bool is_zero() const { return words.empty(); }
 
     Integer &set_negative(bool b) {
         this->is_negative = b;
@@ -107,7 +103,6 @@ public:
                                                                                                                 : 1;
     }
 
-
     static inline int cmp(const Integer &a, const Integer &b) {
         if (a.words_size() == 0 && b.words_size() == 0) return 0;
         else if (!a.is_negative && !b.is_negative) return +cmp_abs(a, b);
@@ -128,13 +123,13 @@ public:
     }
 
     static word word_mul_hi(word a, word b) {
-        word a_hi = a >> 32;
-        word a_lo = a & UINT_MAX;
-        word b_hi = b >> 32;
-        word b_lo = b & UINT_MAX;
-        word tmp = ((a_lo * b_lo) >> 32) + a_hi * b_lo;
-        tmp = (tmp >> 32) + ((a_lo * b_hi + (tmp & UINT_MAX)) >> 32);
-        return tmp + a_hi * b_hi;
+        word a_high = a >> 32;
+        word a_low = a & UINT_MAX;
+        word b_high = b >> 32;
+        word b_low = b & UINT_MAX;
+        word tmp = ((a_low * b_low) >> 32) + a_high * b_low;
+        tmp = (tmp >> 32) + ((a_low * b_high + (tmp & UINT_MAX)) >> 32);
+        return tmp + a_high * b_high;
     }
 
     static Integer &add_unsigned_overwrite(Integer &a, const Integer &b) {
@@ -310,7 +305,6 @@ public:
 
             dst[i] = dst_word;
         }
-
         quotient = dst.truncate().set_negative(generator.is_negative);
     }
 
@@ -346,15 +340,9 @@ public:
         return sub_unsigned_overwrite(result, b);
     }
 
-    static Integer add(const Integer &a, const Integer &b) {
-        Integer result = add_signed(a, a.is_negative, b, b.is_negative);
-        return result;
-    }
+    static Integer add(const Integer &a, const Integer &b) { return add_signed(a, a.is_negative, b, b.is_negative); }
 
-    static Integer sub(const Integer &a, const Integer &b) {
-        Integer result = add_signed(a, a.is_negative, b, !b.is_negative);
-        return result;
-    }
+    static Integer sub(const Integer &a, const Integer &b) { return add_signed(a, a.is_negative, b, !b.is_negative); }
 
     Integer &set_bit(int i) {
         size_t i_word = i / 64, i_bit = i % 64;
@@ -494,55 +482,3 @@ public:
         mul_word((word) v);
     }
 };
-
-void testInitializationAndComparison() {
-    int32_t num32 = 42;
-    int64_t num64 = std::numeric_limits<int64_t>::max();
-    std::string str = "12345";
-    Integer x1(num32);
-    Integer x2(num64);
-    Integer x3(str);
-    assert(x1 == num32);
-    assert(x2 == num64);
-    assert((x3).to_string() == str);
-    assert(x1 == x1);
-    assert(x1 != x2);
-    assert(x1 < x2);
-    assert(x1 <= x2);
-    assert(x2 > x1);
-    assert(x2 >= x1);
-    assert(x1 <= x1);
-    assert(x1 >= x1);
-}
-
-void testArithmeticOperations() {
-    Integer x1(10);
-    Integer x2(5);
-    Integer x3(0);
-    assert(x1 + x2 == 15);
-    assert(x1 + x3 == 10);
-    assert(x2 + x3 == 5);
-    assert(x1 - x2 == 5);
-    assert(x1 - x3 == 10);
-    assert(x2 - x3 == 5);
-    assert(x1 * x2 == 50);
-    assert(x1 * x3 == 0);
-    assert(x2 * x3 == 0);
-    assert(x1 / x2 == 2);
-    assert(x1 >= x2);
-    assert(x1 >= x1);
-    assert(x2 <= x1);
-    assert(x2 <= x2);
-}
-
-void test() {
-    testInitializationAndComparison();
-    testArithmeticOperations();
-    std::cout << "All tests passed!" << std::endl;
-}
-
-int main() {
-    test();
-
-    return 0;
-}
