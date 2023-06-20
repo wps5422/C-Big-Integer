@@ -1,6 +1,6 @@
-#pragma once
 #ifdef _MSC_VER
 #include <sstream>
+#include <cstdlib>
 #pragma warning(disable: 5051)
 #pragma warning(disable: 4068)
 #pragma warning(disable: 4267)
@@ -9,7 +9,6 @@
 #include <climits>
 #include <vector>
 #include <string>
-#include <cstdlib>
 #include <iostream>
 #include <cassert>
 #include <chrono>
@@ -61,7 +60,7 @@ public:
 
     void read(const std::string &s) {
         words.clear();
-        this->is_negative = false;
+        is_negative = false;
         uint32_t i = 0, end = s.size();
         if (s[i] == '-') {
             ++i;
@@ -75,7 +74,7 @@ public:
 
     [[maybe_unused]] explicit Integer(const std::string &s) : is_negative(false) { read(s); }
 
-    [[nodiscard]] inline size_t size() const { return words.size(); }
+    [[nodiscard]] inline size_t words_size() const { return words.size(); }
 
     inline word &operator[](size_t i) { return words[i]; }
 
@@ -96,26 +95,21 @@ public:
     }
 
     [[nodiscard]] size_t bit_size() const {
-        if (size() == 0) return 0;
-        size_t last = size() - 1;
+        if (words_size() == 0) return 0;
+        size_t last = words_size() - 1;
         size_t result = word_bit_size((*this)[last]) + last * 64;
         return result;
     }
 
     static int cmp_abs(const Integer &a, const Integer &b) {
-        size_t na = a.size(), nb = b.size();
-        if (na != nb) {
-            return na < nb ? -1 : +1;
-        }
-        for (size_t i = na; i-- > 0;) {
-            word wa = a[i], wb = b[i];
-            if (wa != wb) return wa < wb ? -1 : +1;
-        }
-        return 0;
+        if (a.words == b.words) return 0;
+        return std::lexicographical_compare(a.words.rbegin(), a.words.rend(), b.words.rbegin(), b.words.rend()) ? -1
+                                                                                                                : 1;
     }
 
+
     static inline int cmp(const Integer &a, const Integer &b) {
-        if (a.size() == 0 && b.size() == 0) return 0;
+        if (a.words_size() == 0 && b.words_size() == 0) return 0;
         else if (!a.is_negative && !b.is_negative) return +cmp_abs(a, b);
         else if (a.is_negative && b.is_negative) return -cmp_abs(a, b);
         else return a.is_negative && !b.is_negative ? -1 : +1;
@@ -144,7 +138,7 @@ public:
     }
 
     static Integer &add_unsigned_overwrite(Integer &a, const Integer &b) {
-        size_t i, na = a.size(), nb = b.size(), n = std::max(na, nb);
+        size_t i, na = a.words_size(), nb = b.words_size(), n = std::max(na, nb);
         a.words.resize(n);
         word carry = 0;
         for (i = 0; i < nb; i++) {
@@ -157,7 +151,7 @@ public:
     }
 
     static Integer &sub_unsigned_overwrite(Integer &a, const Integer &b) {
-        size_t i, na = a.size(), nb = b.size();
+        size_t i, na = a.words_size(), nb = b.words_size();
         word carry = 0;
         for (i = 0; i < nb; i++) {
             carry = sub_carry(&a[i], carry);
@@ -168,12 +162,12 @@ public:
     }
 
     static Integer native_multiple(const Integer &a, const Integer &b) {
-        size_t na = a.size(), nb = b.size(), nc = na + nb + 1;
+        size_t na = a.words_size(), nb = b.words_size(), nc = na + nb + 1;
         Integer c(nc, 0, a.is_negative ^ b.is_negative), carries(nc, 0);
         for (size_t ia = 0; ia < na; ia++) {
             for (size_t ib = 0; ib < nb; ib++) {
                 size_t i = ia + ib, j = i + 1;
-                // WARNING: Might overflow if word size is chosen too small
+                // WARNING: Might overflow if word words_size is chosen too small
                 carries[i + 1] += add_carry(&c[i], a[ia] * b[ib]);
                 carries[j + 1] += add_carry(&c[j], word_mul_hi(a[ia], b[ib]));
             }
@@ -186,7 +180,7 @@ public:
 #pragma ide diagnostic ignored "misc-no-recursion"
 
     static Integer karatsuba_multiple(const Integer &a, const Integer &b) {
-        size_t na = a.size(), nb = b.size(), n = std::max(na, nb), m2 = n / 2 + (n & 1);
+        size_t na = a.words_size(), nb = b.words_size(), n = std::max(na, nb), m2 = n / 2 + (n & 1);
         Integer a_parts[2], b_parts[2];
         split(a, a_parts, 2, m2);
         split(b, b_parts, 2, m2);
@@ -209,7 +203,7 @@ public:
 #pragma ide diagnostic ignored "misc-no-recursion"
 
     static Integer multiple(const Integer &a, const Integer &b) {
-        return (a.size() > 20 && b.size() > 20 ? karatsuba_multiple(a, b) : native_multiple(a, b));
+        return (a.words_size() > 20 && b.words_size() > 20 ? karatsuba_multiple(a, b) : native_multiple(a, b));
     }
 
 #pragma clang diagnostic pop
@@ -223,25 +217,25 @@ public:
     Integer &operator>>=(size_t n_bits) {
         if (n_bits == 0) return *this;
         size_t n_words = n_bits / 64;
-        if (n_words >= size()) {
+        if (n_words >= words_size()) {
             words.resize(0);
             return *this;
         }
         n_bits %= 64;
         if (n_bits == 0) {
-            for (size_t i = 0; i < size() - n_words; i++) {
+            for (size_t i = 0; i < words_size() - n_words; i++) {
                 (*this)[i] = (*this)[i + n_words];
             }
         } else {
             word hi, lo = (*this)[n_words];
-            for (size_t i = 0; i < size() - n_words - 1; i++) {
+            for (size_t i = 0; i < words_size() - n_words - 1; i++) {
                 hi = (*this)[i + n_words + 1];
                 (*this)[i] = (hi << (64 - n_bits)) | (lo >> n_bits);
                 lo = hi;
             }
-            (*this)[size() - n_words - 1] = lo >> n_bits;
+            (*this)[words_size() - n_words - 1] = lo >> n_bits;
         }
-        words.resize(size() - n_words);
+        words.resize(words_size() - n_words);
         return truncate();
     }
 
@@ -249,7 +243,7 @@ public:
         if (n_bits == 0) return *this;
         size_t n_words = n_bits / 64;
         n_bits %= 64;
-        size_t old_size = size();
+        size_t old_size = words_size();
         size_t n = old_size + n_words + (n_bits != 0);
         words.resize(n);
         if (n_bits == 0) {
@@ -287,9 +281,9 @@ public:
 
     static void div_mod_half_word(const Integer &generator, word denominator, Integer &quotient, word &remainder) {
         remainder = 0;
-        Integer dst(generator.size(), 0);
+        Integer dst(generator.words_size(), 0);
 
-        for (size_t i = generator.size(); i-- > 0;) {
+        for (size_t i = generator.words_size(); i-- > 0;) {
             word dst_word = 0;
             word src_word = generator[i];
             word parts[2];
@@ -325,7 +319,7 @@ public:
         for (size_t k = 0; k < n_parts; k++) {
             Integer &part = parts[k];
             part.words.resize(n);
-            for (size_t j = 0; j < n && i < a.size(); j++) part[j] = a[i++];
+            for (size_t j = 0; j < n && i < a.words_size(); j++) part[j] = a[i++];
             part = part.truncate();
         }
     }
@@ -364,14 +358,14 @@ public:
 
     Integer &set_bit(int i) {
         size_t i_word = i / 64, i_bit = i % 64;
-        if (size() <= i_word) words.resize(i_word + 1);
+        if (words_size() <= i_word) words.resize(i_word + 1);
         (*this)[i_word] |= ((word) 1) << i_bit;
         return *this;
     }
 
     Integer &mul_word(word b) {
         word carry = 0;
-        for (size_t i = 0; i < size(); i++) {
+        for (size_t i = 0; i < words_size(); i++) {
             word a = (*this)[i];
             word tmp = a * b;
             carry = add_carry(&tmp, carry);
@@ -393,7 +387,7 @@ public:
         if (words.empty()) return "0";
         std::string result;
         Integer tmp(*this);
-        while (tmp.size() != 0) {
+        while (tmp.words_size() != 0) {
             word remainder;
             div_mod_half_word(tmp, 10, tmp, remainder);
             result.push_back(char(MIN_NUMERIC_CHARACTER + remainder));
@@ -484,7 +478,7 @@ public:
         }
         std::string result;
         Integer tmp(v);
-        while (tmp.size() != 0) {
+        while (tmp.words_size() != 0) {
             word remainder;
             div_mod_half_word(tmp, 10, tmp, remainder);
             result.push_back(char(MIN_NUMERIC_CHARACTER + remainder));
@@ -501,35 +495,54 @@ public:
     }
 };
 
+void testInitializationAndComparison() {
+    int32_t num32 = 42;
+    int64_t num64 = std::numeric_limits<int64_t>::max();
+    std::string str = "12345";
+    Integer x1(num32);
+    Integer x2(num64);
+    Integer x3(str);
+    assert(x1 == num32);
+    assert(x2 == num64);
+    assert((x3).to_string() == str);
+    assert(x1 == x1);
+    assert(x1 != x2);
+    assert(x1 < x2);
+    assert(x1 <= x2);
+    assert(x2 > x1);
+    assert(x2 >= x1);
+    assert(x1 <= x1);
+    assert(x1 >= x1);
+}
+
+void testArithmeticOperations() {
+    Integer x1(10);
+    Integer x2(5);
+    Integer x3(0);
+    assert(x1 + x2 == 15);
+    assert(x1 + x3 == 10);
+    assert(x2 + x3 == 5);
+    assert(x1 - x2 == 5);
+    assert(x1 - x3 == 10);
+    assert(x2 - x3 == 5);
+    assert(x1 * x2 == 50);
+    assert(x1 * x3 == 0);
+    assert(x2 * x3 == 0);
+    assert(x1 / x2 == 2);
+    assert(x1 >= x2);
+    assert(x1 >= x1);
+    assert(x2 <= x1);
+    assert(x2 <= x2);
+}
+
+void test() {
+    testInitializationAndComparison();
+    testArithmeticOperations();
+    std::cout << "All tests passed!" << std::endl;
+}
+
 int main() {
-    {
-        int x = -10;
-        Integer q = Integer(x);
-        std::cout << q << '\n';
-    }
-    {
-        int x = INT_MIN;
-        Integer q = Integer(x);
-        std::cout << q << '\n';
-    }
-    {
-        int x = INT_MAX;
-        Integer q = Integer(x);
-        std::cout << q << '\n';
-    }
-    {
-        auto x = LLONG_MAX;
-        Integer q = Integer(x);
-        std::cout << q << '\n';
-    }
-    {
-        auto x = LLONG_MIN;
-        Integer q = Integer(x);
-        std::cout << q << '\n';
-    }
-    {
-        auto x = ULONG_LONG_MAX;
-        Integer q = Integer(x);
-        std::cout << q << '\n';
-    }
+    test();
+
+    return 0;
 }
