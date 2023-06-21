@@ -463,19 +463,7 @@ public:
     }
 
     friend std::ostream &operator<<(std::ostream &stream, const Integer &v) {
-        if (v.words.empty()) {
-            putchar(MIN_NUMERIC_CHARACTER);
-            return stream;
-        }
-        std::string result;
-        Integer tmp(v);
-        while (tmp.size() != 0) {
-            word remainder;
-            div_mod_half_word(tmp, 10, tmp, remainder);
-            result.push_back(char(MIN_NUMERIC_CHARACTER + remainder));
-        }
-        if (v.is_negative) putchar('-');
-        for (int i = (int) result.size() - 1; i >= 0; --i) putchar(result[i]);
+        std::cout << v.to_string();
         return stream;
     }
 
