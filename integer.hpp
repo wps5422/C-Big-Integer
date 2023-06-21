@@ -60,7 +60,7 @@ public:
     void read(const std::string &s) {
         words.clear();
         this->is_negative = false;
-        uint32_t i = 0, end = s.size();
+        size_t i = 0, end = s.size();
         if (s[i] == '-') {
             ++i;
             is_negative = true;
@@ -68,6 +68,7 @@ public:
         for (; i != end; ++i) {
             mul_word(base_digit);
             word carry = s[i] - MIN_NUMERIC_CHARACTER;
+            assert(carry < base_digit);
             if (words.empty()) words.resize(1);
             for (size_t j = 0; j < words.size() && carry; j++) carry = add_carry(&words[j], carry);
             if (carry) words.push_back(carry);
@@ -334,7 +335,7 @@ public:
         return *this;
     }
 
-    Integer &mul_word(word b) {
+    void mul_word(word b) {
         word carry = 0;
         for (size_t i = 0; i < words.size(); i++) {
             word a = words[i];
@@ -344,7 +345,7 @@ public:
             words[i] = tmp;
         }
         if (carry) words.push_back(carry);
-        return truncate();
+        while (!words.empty() && words.back() == 0) words.pop_back();
     }
 
     std::string to_string() const {
