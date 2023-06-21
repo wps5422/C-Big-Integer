@@ -78,6 +78,8 @@ public:
 
     explicit Integer(const std::string &s) : is_negative(false) { read(s); }
 
+    explicit Integer(const char *s) : is_negative(false) { read((std::string) s); }
+
     inline word &operator[](size_t i) { return words[i]; }
 
     const word &operator[](size_t i) const { return words[i]; }
