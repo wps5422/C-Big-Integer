@@ -354,17 +354,21 @@ public:
         return *this;
     }
 
-    Integer &mul_word(word b) {
+    void mul_word(word b) {
         word carry = 0;
-        for (size_t i = 0; i < size(); i++) {
-            word a = (*this)[i];
+        size_t end = words.size();
+        for (size_t i = 0; i < end; i++) {
+            word a = words[i];
             word tmp = a * b;
             carry = add_carry(&tmp, carry);
             carry += word_mul_hi(a, b);
-            (*this)[i] = tmp;
+            words[i] = tmp;
         }
-        if (carry) words.push_back(carry);
-        return truncate();
+        if (carry) {
+            words.push_back(carry);
+            ++end;
+        }
+        while (!words.empty() && words.back() == 0) words.pop_back();
     }
 
     Integer &add_word(word carry) {
