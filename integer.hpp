@@ -1,4 +1,3 @@
-#pragma once
 #ifdef _MSC_VER
 #include <sstream>
 #endif
@@ -18,9 +17,6 @@
                   std::is_same_v<type, int64_t>, \
                   "type must be int8, int16, int32, or int64")
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "misc-no-recursion"
-
 class Integer {
 public:
     using word = uint64_t;
@@ -35,10 +31,7 @@ public:
     [[maybe_unused]] Integer(const word *a, const word *b, bool negative = false) : words(a, b),
                                                                                     is_negative(negative) {}
 
-    Integer(const Integer &a) {
-        words = a.words;
-        is_negative = a.is_negative;
-    }
+    Integer(const Integer &a) { words = a.words, is_negative = a.is_negative; }
 
     Integer &operator=(const Integer &a) = default;
 
@@ -50,6 +43,7 @@ public:
         if (number < 0) {
             is_negative = true;
             number *= -1;
+            // When the number is equal to the smallest number of its type. It will cause an error. Since the smallest number of integers multiplied by -1 is equal to itself. Example: INT_MIN * -1 = INT_MIN, LONG_LONG_MIN * -1 = LONG_LONG_MIN. Use the read function for a safer initialization.
         }
         while (number != 0) {
             words.push_back(number);
@@ -78,7 +72,7 @@ public:
 
     explicit Integer(const std::string &s) : is_negative(false) { read(s); }
 
-    explicit Integer(const char *s) : is_negative(false) { read((std::string) s); }
+    [[maybe_unused]] explicit Integer(const char *s) : is_negative(false) { read((std::string) s); }
 
     inline word &operator[](size_t i) { return words[i]; }
 
@@ -128,14 +122,11 @@ public:
         return (*a = tmp - b) > tmp;
     }
 
-    static word word_mul_hi(word a, word b) {
-        word a_hi = a >> 32;
-        word a_lo = a & UINT_MAX;
-        word b_hi = b >> 32;
-        word b_lo = b & UINT_MAX;
-        word tmp = ((a_lo * b_lo) >> 32) + a_hi * b_lo;
-        tmp = (tmp >> 32) + ((a_lo * b_hi + (tmp & UINT_MAX)) >> 32);
-        return tmp + a_hi * b_hi;
+    static word word_mul_high(word a, word b) {
+        word a_high = a >> 32, a_low = a & UINT_MAX, b_high = b >> 32, b_low = b & UINT_MAX;
+        word tmp = ((a_low * b_low) >> 32) + a_high * b_low;
+        tmp = (tmp >> 32) + ((a_low * b_high + (tmp & UINT_MAX)) >> 32);
+        return tmp + a_high * b_high;
     }
 
     static Integer &add_unsigned_overwrite(Integer &a, const Integer &b) {
@@ -169,7 +160,7 @@ public:
             for (size_t ib = 0; ib < nb; ib++) {
                 size_t i = ia + ib, j = i + 1;
                 carries[i + 1] += add_carry(&c[i], a[ia] * b[ib]);
-                carries[j + 1] += add_carry(&c[j], word_mul_hi(a[ia], b[ib]));
+                carries[j + 1] += add_carry(&c[j], word_mul_high(a[ia], b[ib]));
             }
         }
         return add_unsigned_overwrite(c, carries).truncate();
@@ -189,11 +180,14 @@ public:
         result += z1 - z2 - z0;
         result <<= m2;
         result += z0;
+        std::cerr << "called\n";
         return result;
     }
 
+    static constexpr size_t threshold = 15;
+
     static Integer multiple(const Integer &a, const Integer &b) {
-        return (a.words.size() > 20 && b.words.size() > 20 ? karatsuba_multiple(a, b) : native_multiple(a, b));
+        return (a.words.size() > threshold && b.words.size() > threshold ? karatsuba_multiple(a, b) : native_multiple(a, b));
     }
 
     static Integer add_signed(const Integer &a, bool a_negative, const Integer &b, bool b_negative) {
@@ -215,13 +209,13 @@ public:
                 words[i] = words[i + n_words];
             }
         } else {
-            word hi, lo = words[n_words];
+            word high, low = words[n_words];
             for (size_t i = 0; i < words.size() - n_words - 1; i++) {
-                hi = words[i + n_words + 1];
-                words[i] = (hi << (64 - n_bits)) | (lo >> n_bits);
-                lo = hi;
+                high = words[i + n_words + 1];
+                words[i] = (high << (64 - n_bits)) | (low >> n_bits);
+                low = high;
             }
-            words[words.size() - n_words - 1] = lo >> n_bits;
+            words[words.size() - n_words - 1] = low >> n_bits;
         }
         words.resize(words.size() - n_words);
         return truncate();
@@ -237,13 +231,13 @@ public:
         if (n_bits == 0) {
             for (size_t i = n; i-- > n_words;) words[i] = words[i - n_words];
         } else {
-            word lo, hi = 0;
+            word low, high = 0;
             for (size_t i = n - 1; i > n_words; i--) {
-                lo = words[i - n_words - 1];
-                words[i] = (hi << n_bits) | (lo >> (64 - n_bits));
-                hi = lo;
+                low = words[i - n_words - 1];
+                words[i] = (high << n_bits) | (low >> (64 - n_bits));
+                high = low;
             }
-            words[n_words] = hi << n_bits;
+            words[n_words] = high << n_bits;
         }
         for (size_t i = 0; i < n_words; i++) words[i] = 0;
         return truncate();
@@ -343,7 +337,7 @@ public:
             word a = words[i];
             word tmp = a * b;
             carry = add_carry(&tmp, carry);
-            carry += word_mul_hi(a, b);
+            carry += word_mul_high(a, b);
             words[i] = tmp;
         }
         if (carry) words.push_back(carry);
@@ -437,4 +431,3 @@ public:
     }
 };
 
-#pragma clang diagnostic pop
