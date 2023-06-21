@@ -78,8 +78,6 @@ public:
 
     explicit Integer(const std::string &s) : is_negative(false) { read(s); }
 
-    inline size_t size() const { return words.size(); }
-
     inline word &operator[](size_t i) { return words[i]; }
 
     const word &operator[](size_t i) const { return words[i]; }
@@ -97,8 +95,8 @@ public:
     }
 
     size_t bit_size() const {
-        if (size() == 0) return 0;
-        size_t last = size() - 1;
+        if (words.empty()) return 0;
+        size_t last = words.size() - 1;
         size_t result = word_bit_size(words[last]) + last * 64;
         return result;
     }
@@ -110,7 +108,7 @@ public:
     }
 
     static inline int cmp(const Integer &a, const Integer &b) {
-        if (a.size() == 0 && b.size() == 0) return 0;
+        if (a.words.size() == 0 && b.words.size() == 0) return 0;
         else if (!a.is_negative && !b.is_negative) return +cmp_abs(a, b);
         else if (a.is_negative && b.is_negative) return -cmp_abs(a, b);
         else return a.is_negative && !b.is_negative ? -1 : +1;
@@ -139,7 +137,7 @@ public:
     }
 
     static Integer &add_unsigned_overwrite(Integer &a, const Integer &b) {
-        size_t i, na = a.size(), nb = b.size(), n = std::max(na, nb);
+        size_t i, na = a.words.size(), nb = b.words.size(), n = std::max(na, nb);
         a.words.resize(n);
         word carry = 0;
         for (i = 0; i < nb; i++) {
@@ -152,7 +150,7 @@ public:
     }
 
     static Integer &sub_unsigned_overwrite(Integer &a, const Integer &b) {
-        size_t i, na = a.size(), nb = b.size();
+        size_t i, na = a.words.size(), nb = b.words.size();
         word carry = 0;
         for (i = 0; i < nb; i++) {
             carry = sub_carry(&a[i], carry);
@@ -163,7 +161,7 @@ public:
     }
 
     static Integer native_multiple(const Integer &a, const Integer &b) {
-        size_t na = a.size(), nb = b.size(), nc = na + nb + 1;
+        size_t na = a.words.size(), nb = b.words.size(), nc = na + nb + 1;
         Integer c(nc, 0, a.is_negative ^ b.is_negative), carries(nc, 0);
         for (size_t ia = 0; ia < na; ia++) {
             for (size_t ib = 0; ib < nb; ib++) {
@@ -176,7 +174,7 @@ public:
     }
 
     static Integer karatsuba_multiple(const Integer &a, const Integer &b) {
-        size_t na = a.size(), nb = b.size(), n = std::max(na, nb), m2 = n / 2 + (n & 1);
+        size_t na = a.words.size(), nb = b.words.size(), n = std::max(na, nb), m2 = n / 2 + (n & 1);
         Integer a_parts[2], b_parts[2];
         split(a, a_parts, 2, m2);
         split(b, b_parts, 2, m2);
@@ -193,7 +191,7 @@ public:
     }
 
     static Integer multiple(const Integer &a, const Integer &b) {
-        return (a.size() > 20 && b.size() > 20 ? karatsuba_multiple(a, b) : native_multiple(a, b));
+        return (a.words.size() > 20 && b.words.size() > 20 ? karatsuba_multiple(a, b) : native_multiple(a, b));
     }
 
     static Integer add_signed(const Integer &a, bool a_negative, const Integer &b, bool b_negative) {
@@ -205,25 +203,25 @@ public:
     Integer &operator>>=(size_t n_bits) {
         if (n_bits == 0) return *this;
         size_t n_words = n_bits / 64;
-        if (n_words >= size()) {
+        if (n_words >= words.size()) {
             words.resize(0);
             return *this;
         }
         n_bits %= 64;
         if (n_bits == 0) {
-            for (size_t i = 0; i < size() - n_words; i++) {
+            for (size_t i = 0; i < words.size() - n_words; i++) {
                 words[i] = words[i + n_words];
             }
         } else {
             word hi, lo = words[n_words];
-            for (size_t i = 0; i < size() - n_words - 1; i++) {
+            for (size_t i = 0; i < words.size() - n_words - 1; i++) {
                 hi = words[i + n_words + 1];
                 words[i] = (hi << (64 - n_bits)) | (lo >> n_bits);
                 lo = hi;
             }
-            words[size() - n_words - 1] = lo >> n_bits;
+            words[words.size() - n_words - 1] = lo >> n_bits;
         }
-        words.resize(size() - n_words);
+        words.resize(words.size() - n_words);
         return truncate();
     }
 
@@ -231,7 +229,7 @@ public:
         if (n_bits == 0) return *this;
         size_t n_words = n_bits / 64;
         n_bits %= 64;
-        size_t old_size = size();
+        size_t old_size = words.size();
         size_t n = old_size + n_words + (n_bits != 0);
         words.resize(n);
         if (n_bits == 0) {
@@ -269,8 +267,8 @@ public:
 
     static void div_mod_half_word(const Integer &generator, Integer &quotient, word &remainder) {
         remainder = 0;
-        Integer dst(generator.size(), 0);
-        for (size_t i = generator.size(); i-- > 0;) {
+        Integer dst(generator.words.size(), 0);
+        for (size_t i = generator.words.size(); i-- > 0;) {
             word dst_word = 0;
             word src_word = generator[i];
             word parts[2] = {src_word >> 32, src_word & UINT_MAX};
@@ -293,7 +291,7 @@ public:
         for (size_t k = 0; k < n_parts; k++) {
             Integer &part = parts[k];
             part.words.resize(n);
-            for (size_t j = 0; j < n && i < a.size(); j++) part[j] = a[i++];
+            for (size_t j = 0; j < n && i < a.words.size(); j++) part[j] = a[i++];
             part = part.truncate();
         }
     }
@@ -332,14 +330,14 @@ public:
 
     Integer &set_bit(int i) {
         size_t i_word = i / 64, i_bit = i % 64;
-        if (size() <= i_word) words.resize(i_word + 1);
+        if (words.size() <= i_word) words.resize(i_word + 1);
         words[i_word] |= ((word) 1) << i_bit;
         return *this;
     }
 
     Integer &mul_word(word b) {
         word carry = 0;
-        for (size_t i = 0; i < size(); i++) {
+        for (size_t i = 0; i < words.size(); i++) {
             word a = words[i];
             word tmp = a * b;
             carry = add_carry(&tmp, carry);
@@ -361,7 +359,7 @@ public:
         if (words.empty()) return "0";
         std::string result;
         Integer tmp(*this);
-        while (tmp.size() != 0) {
+        while (tmp.words.size() != 0) {
             word remainder;
             div_mod_half_word(tmp, tmp, remainder);
             result.push_back(char(MIN_NUMERIC_CHARACTER + remainder));
