@@ -19,7 +19,7 @@
 
 class Integer {
 public:
-    using word = unsigned long long int;
+    using word = int64_t;
     static constexpr word base_digit = 10;
     std::vector<word> words;
     bool is_negative = false;
@@ -112,13 +112,13 @@ public:
     }
 
     static word word_mul_hi(word a, word b) {
-        word a_hi = a >> 32;
-        word a_lo = a & UINT_MAX;
-        word b_hi = b >> 32;
-        word b_lo = b & UINT_MAX;
-        word tmp = ((a_lo * b_lo) >> 32) + a_hi * b_lo;
-        tmp = (tmp >> 32) + ((a_lo * b_hi + (tmp & UINT_MAX)) >> 32);
-        return tmp + a_hi * b_hi;
+        word a_high = a >> 32;
+        word a_low = a & UINT_MAX;
+        word b_high = b >> 32;
+        word b_low = b & UINT_MAX;
+        word tmp = ((a_low * b_low) >> 32) + a_high * b_low;
+        tmp = (tmp >> 32) + ((a_low * b_high + (tmp & UINT_MAX)) >> 32);
+        return tmp + a_high * b_high;
     }
 
     static Integer &add_unsigned_overwrite(Integer &a, const Integer &b) {
