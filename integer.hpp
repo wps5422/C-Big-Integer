@@ -447,10 +447,13 @@ public:
     }
 
     template<class type>
-    void operator*=(type v) {
+    void operator*=(type number) {
         CHECK_INT_TYPE(type);
-        if (v < 0) is_negative = !is_negative;
-        mul_word((word) v);
+        if (number < 0) {
+            is_negative = !is_negative;
+            number *= -1;
+        }
+        mul_word((word) number);
     }
 };
 
