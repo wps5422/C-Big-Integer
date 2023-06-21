@@ -99,7 +99,7 @@ public:
     size_t bit_size() const {
         if (size() == 0) return 0;
         size_t last = size() - 1;
-        size_t result = word_bit_size((*this)[last]) + last * 64;
+        size_t result = word_bit_size(words[last]) + last * 64;
         return result;
     }
 
@@ -212,16 +212,16 @@ public:
         n_bits %= 64;
         if (n_bits == 0) {
             for (size_t i = 0; i < size() - n_words; i++) {
-                (*this)[i] = (*this)[i + n_words];
+                words[i] = words[i + n_words];
             }
         } else {
-            word hi, lo = (*this)[n_words];
+            word hi, lo = words[n_words];
             for (size_t i = 0; i < size() - n_words - 1; i++) {
-                hi = (*this)[i + n_words + 1];
-                (*this)[i] = (hi << (64 - n_bits)) | (lo >> n_bits);
+                hi = words[i + n_words + 1];
+                words[i] = (hi << (64 - n_bits)) | (lo >> n_bits);
                 lo = hi;
             }
-            (*this)[size() - n_words - 1] = lo >> n_bits;
+            words[size() - n_words - 1] = lo >> n_bits;
         }
         words.resize(size() - n_words);
         return truncate();
@@ -235,17 +235,17 @@ public:
         size_t n = old_size + n_words + (n_bits != 0);
         words.resize(n);
         if (n_bits == 0) {
-            for (size_t i = n; i-- > n_words;) (*this)[i] = (*this)[i - n_words];
+            for (size_t i = n; i-- > n_words;) words[i] = words[i - n_words];
         } else {
             word lo, hi = 0;
             for (size_t i = n - 1; i > n_words; i--) {
-                lo = (*this)[i - n_words - 1];
-                (*this)[i] = (hi << n_bits) | (lo >> (64 - n_bits));
+                lo = words[i - n_words - 1];
+                words[i] = (hi << n_bits) | (lo >> (64 - n_bits));
                 hi = lo;
             }
-            (*this)[n_words] = hi << n_bits;
+            words[n_words] = hi << n_bits;
         }
-        for (size_t i = 0; i < n_words; i++) (*this)[i] = 0;
+        for (size_t i = 0; i < n_words; i++) words[i] = 0;
         return truncate();
     }
 
@@ -333,18 +333,18 @@ public:
     Integer &set_bit(int i) {
         size_t i_word = i / 64, i_bit = i % 64;
         if (size() <= i_word) words.resize(i_word + 1);
-        (*this)[i_word] |= ((word) 1) << i_bit;
+        words[i_word] |= ((word) 1) << i_bit;
         return *this;
     }
 
     Integer &mul_word(word b) {
         word carry = 0;
         for (size_t i = 0; i < size(); i++) {
-            word a = (*this)[i];
+            word a = words[i];
             word tmp = a * b;
             carry = add_carry(&tmp, carry);
             carry += word_mul_hi(a, b);
-            (*this)[i] = tmp;
+            words[i] = tmp;
         }
         if (carry) words.push_back(carry);
         return truncate();
@@ -352,7 +352,7 @@ public:
 
     Integer &add_word(word carry) {
         if (words.empty()) words.resize(1);
-        for (size_t i = 0; i < words.size() && carry; i++) carry = add_carry(&(*this)[i], carry);
+        for (size_t i = 0; i < words.size() && carry; i++) carry = add_carry(&words[i], carry);
         if (carry) words.push_back(carry);
         return truncate();
     }
