@@ -67,9 +67,9 @@ public:
         }
     }
 
-    [[maybe_unused]] explicit Integer(const std::string &s) : is_negative(false) { read(s); }
+    explicit Integer(const std::string &s) : is_negative(false) { read(s); }
 
-    [[nodiscard]] inline size_t size() const { return words.size(); }
+    inline size_t size() const { return words.size(); }
 
     inline word &operator[](size_t i) { return words[i]; }
 
@@ -87,7 +87,7 @@ public:
         return *this;
     }
 
-    [[nodiscard]] size_t bit_size() const {
+    size_t bit_size() const {
         if (size() == 0) return 0;
         size_t last = size() - 1;
         size_t result = word_bit_size((*this)[last]) + last * 64;
@@ -374,7 +374,7 @@ public:
         return truncate();
     }
 
-    [[maybe_unused]] [[nodiscard]] std::string to_string() const {
+    [[maybe_unused]]  std::string to_string() const {
         if (words.empty()) return "0";
         std::string result;
         Integer tmp(*this);
