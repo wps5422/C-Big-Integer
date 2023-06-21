@@ -18,6 +18,8 @@
                   std::is_same_v<type, int64_t>, \
                   "type must be int8, int16, int32, or int64")
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "misc-no-recursion"
 class Integer {
 public:
     using word = unsigned long long int;
@@ -171,10 +173,6 @@ public:
         return add_unsigned_overwrite(c, carries).truncate();
     }
 
-
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "misc-no-recursion"
-
     static Integer karatsuba_multiple(const Integer &a, const Integer &b) {
         size_t na = a.size(), nb = b.size(), n = std::max(na, nb), m2 = n / 2 + (n & 1);
         Integer a_parts[2], b_parts[2];
@@ -192,17 +190,9 @@ public:
         return result;
     }
 
-#pragma clang diagnostic pop
-
-
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "misc-no-recursion"
-
     static Integer multiple(const Integer &a, const Integer &b) {
         return (a.size() > 20 && b.size() > 20 ? karatsuba_multiple(a, b) : native_multiple(a, b));
     }
-
-#pragma clang diagnostic pop
 
     static Integer add_signed(const Integer &a, bool a_negative, const Integer &b, bool b_negative) {
         if (a_negative == b_negative) return add_unsigned(a, b).set_negative(a_negative);
@@ -425,12 +415,7 @@ public:
 
     Integer operator-(const Integer &b) const { return sub(*this, b); }
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "misc-no-recursion"
-
     Integer operator*(const Integer &b) const { return multiple(*this, b); }
-
-#pragma clang diagnostic pop
 
     Integer operator/(const Integer &b) const {
         assert(!b.is_zero());
@@ -467,3 +452,4 @@ public:
         mul_word((word) v);
     }
 };
+#pragma clang diagnostic pop
