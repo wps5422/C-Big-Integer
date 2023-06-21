@@ -1,9 +1,6 @@
 #pragma once
 #ifdef _MSC_VER
 #include <sstream>
-#pragma warning(disable: 5051)
-#pragma warning(disable: 4068)
-#pragma warning(disable: 4267)
 #endif
 
 #include <climits>
