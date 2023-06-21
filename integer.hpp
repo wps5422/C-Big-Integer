@@ -28,7 +28,7 @@ public:
     std::vector<word> words;
     bool is_negative = false;
 
-    Integer() : is_negative(false) {}
+    Integer() : is_negative(false) {};
 
     Integer(size_t n, word w, bool negative = false) : words(n, w), is_negative(negative) {}
 
@@ -42,9 +42,6 @@ public:
 
     Integer &operator=(const Integer &a) = default;
 
-
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "google-explicit-constructor"
     static constexpr char MIN_NUMERIC_CHARACTER = '0';
 
     template<class type>
@@ -59,8 +56,6 @@ public:
             for (int j = 0; j < 64; j++) number >>= 1;
         }
     }
-
-#pragma clang diagnostic pop
 
     void read(const std::string &s) {
         words.clear();
