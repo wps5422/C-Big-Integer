@@ -14,6 +14,13 @@
 #include <cassert>
 #include <chrono>
 
+#define CHECK_INT_TYPE(type) \
+    static_assert(std::is_same_v<type, int8_t> || \
+                  std::is_same_v<type, int16_t> || \
+                  std::is_same_v<type, int32_t> || \
+                  std::is_same_v<type, int64_t>, \
+                  "type must be int8, int16, int32, or int64")
+
 class Integer {
 public:
     using word = unsigned long long int;
@@ -39,8 +46,9 @@ public:
 #pragma ide diagnostic ignored "google-explicit-constructor"
     static constexpr char MIN_NUMERIC_CHARACTER = '0';
 
-    template<class T>
-    Integer(T number) {
+    template<class type>
+    Integer(type number) {
+        CHECK_INT_TYPE(type);
         if (number < 0) {
             is_negative = true;
             number *= -1;
@@ -457,6 +465,7 @@ public:
 
     template<class type>
     void operator*=(type v) {
+        CHECK_INT_TYPE(type);
         if (v < 0) is_negative = !is_negative;
         mul_word((word) v);
     }
