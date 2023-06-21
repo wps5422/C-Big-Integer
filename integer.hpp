@@ -24,6 +24,7 @@
 class Integer {
 public:
     using word = uint64_t;
+    static constexpr word base_digit = 10;
     std::vector<word> words;
     bool is_negative = false;
 
@@ -70,7 +71,7 @@ public:
             is_negative = true;
         }
         for (; i != end; ++i) {
-            mul_word(10);
+            mul_word(base_digit);
             add_word(s[i] - MIN_NUMERIC_CHARACTER);
         }
     }
@@ -266,38 +267,24 @@ public:
         remainder.set_negative(generator.is_negative);
     }
 
-    static void div_mod_half_word(const Integer &generator, word denominator, Integer &quotient, word &remainder) {
+    static void div_mod_half_word(const Integer &generator, Integer &quotient, word &remainder) {
         remainder = 0;
         Integer dst(generator.size(), 0);
-
         for (size_t i = generator.size(); i-- > 0;) {
             word dst_word = 0;
             word src_word = generator[i];
-            word parts[2];
-            parts[0] = src_word >> 32;
-            parts[1] = src_word & UINT_MAX;
-            {
+            word parts[2] = {src_word >> 32, src_word & UINT_MAX};
+            for (int j: {0, 1}) {
                 remainder <<= 32;
-                remainder |= parts[0];
-                word div_word = remainder / denominator;
-                word mod_word = remainder % denominator;
+                remainder |= parts[j];
+                word div_word = remainder / base_digit;
+                word mod_word = remainder % base_digit;
                 remainder = mod_word;
                 dst_word <<= 32;
                 dst_word |= div_word;
             }
-            {
-                remainder <<= 32;
-                remainder |= parts[1];
-                word div_word = remainder / denominator;
-                word mod_word = remainder % denominator;
-                remainder = mod_word;
-                dst_word <<= 32;
-                dst_word |= div_word;
-            }
-
             dst[i] = dst_word;
         }
-
         quotient = dst.truncate().set_negative(generator.is_negative);
     }
 
@@ -376,7 +363,7 @@ public:
         Integer tmp(*this);
         while (tmp.size() != 0) {
             word remainder;
-            div_mod_half_word(tmp, 10, tmp, remainder);
+            div_mod_half_word(tmp, tmp, remainder);
             result.push_back(char(MIN_NUMERIC_CHARACTER + remainder));
         }
         if (is_negative) result.push_back('-');
