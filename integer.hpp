@@ -388,18 +388,6 @@ public:
         return result;
     }
 
-    [[maybe_unused]] [[nodiscard]] Integer pow(size_t exponent) const {
-        Integer result(1), p(*this);
-        for (; exponent; exponent >>= 1) {
-            if (exponent & 1) {
-                result *= p;
-                --exponent;
-            }
-            p *= p;
-        }
-        return result;
-    }
-
     Integer &operator+=(const Integer &b) { return *this = add(*this, b); }
 
     Integer &operator-=(const Integer &b) { return *this = sub(*this, b); }
