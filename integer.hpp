@@ -20,9 +20,10 @@
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "misc-no-recursion"
+
 class Integer {
 public:
-    using word = unsigned long long int;
+    using word = uint64_t;
     std::vector<word> words;
     bool is_negative = false;
 
@@ -273,24 +274,24 @@ public:
             word dst_word = 0;
             word src_word = generator[i];
             word parts[2];
-            parts[0] = src_word >> 64 / 2;
+            parts[0] = src_word >> 32;
             parts[1] = src_word & UINT_MAX;
             {
-                remainder <<= 64 / 2;
+                remainder <<= 32;
                 remainder |= parts[0];
                 word div_word = remainder / denominator;
                 word mod_word = remainder % denominator;
                 remainder = mod_word;
-                dst_word <<= 64 / 2;
+                dst_word <<= 32;
                 dst_word |= div_word;
             }
             {
-                remainder <<= 64 / 2;
+                remainder <<= 32;
                 remainder |= parts[1];
                 word div_word = remainder / denominator;
                 word mod_word = remainder % denominator;
                 remainder = mod_word;
-                dst_word <<= 64 / 2;
+                dst_word <<= 32;
                 dst_word |= div_word;
             }
 
@@ -452,4 +453,5 @@ public:
         mul_word((word) v);
     }
 };
+
 #pragma clang diagnostic pop
