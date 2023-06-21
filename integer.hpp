@@ -67,7 +67,11 @@ public:
         }
         for (; i != end; ++i) {
             mul_word(base_digit);
-            add_word(s[i] - MIN_NUMERIC_CHARACTER);
+            word carry = s[i] - MIN_NUMERIC_CHARACTER;
+            if (words.empty()) words.resize(1);
+            for (size_t j = 0; j < words.size() && carry; j++) carry = add_carry(&words[j], carry);
+            if (carry) words.push_back(carry);
+            while (!words.empty() && words.back() == 0) words.pop_back();
         }
     }
 
@@ -343,14 +347,7 @@ public:
         return truncate();
     }
 
-    Integer &add_word(word carry) {
-        if (words.empty()) words.resize(1);
-        for (size_t i = 0; i < words.size() && carry; i++) carry = add_carry(&words[i], carry);
-        if (carry) words.push_back(carry);
-        return truncate();
-    }
-
-    [[maybe_unused]]  std::string to_string() const {
+    std::string to_string() const {
         if (words.empty()) return "0";
         std::string result;
         Integer tmp(*this);
