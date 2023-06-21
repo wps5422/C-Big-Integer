@@ -1,5 +1,9 @@
+#pragma once
 #ifdef _MSC_VER
 #include <sstream>
+#pragma warning(disable: 5051)
+#pragma warning(disable: 4068)
+#pragma warning(disable: 4267)
 #endif
 
 #include <climits>
@@ -10,17 +14,9 @@
 #include <cassert>
 #include <chrono>
 
-#define CHECK_INT_TYPE(type) \
-    static_assert(std::is_same_v<type, int8_t> || \
-                  std::is_same_v<type, int16_t> || \
-                  std::is_same_v<type, int32_t> || \
-                  std::is_same_v<type, int64_t>, \
-                  "type must be int8, int16, int32, or int64")
-
 class Integer {
 public:
-    using word = int64_t;
-    static constexpr word base_digit = 10;
+    using word = unsigned long long int;
     std::vector<word> words;
     bool is_negative = false;
 
@@ -28,19 +24,26 @@ public:
 
     Integer(size_t n, word w, bool negative = false) : words(n, w), is_negative(negative) {}
 
-    Integer(const Integer &a) { words = a.words, is_negative = a.is_negative; }
+    [[maybe_unused]] Integer(const word *a, const word *b, bool negative = false) : words(a, b),
+                                                                                    is_negative(negative) {}
+
+    Integer(const Integer &a) {
+        words = a.words;
+        is_negative = a.is_negative;
+    }
 
     Integer &operator=(const Integer &a) = default;
 
+
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "google-explicit-constructor"
     static constexpr char MIN_NUMERIC_CHARACTER = '0';
 
-    template<class type>
-    Integer(type number) {
-        CHECK_INT_TYPE(type);
+    template<class T>
+    Integer(T number) {
         if (number < 0) {
             is_negative = true;
             number *= -1;
-            // When the number is equal to the smallest number of its type. It will cause an error. Since the smallest number of integers multiplied by -1 is equal to itself. Example: INT_MIN * -1 = INT_MIN, LONG_LONG_MIN * -1 = LONG_LONG_MIN. Use the read function for a safer initialization.
         }
         while (number != 0) {
             words.push_back(number);
@@ -48,25 +51,29 @@ public:
         }
     }
 
+#pragma clang diagnostic pop
+
     void read(const std::string &s) {
         words.clear();
         this->is_negative = false;
-        size_t i = 0, end = s.size();
+        uint32_t i = 0, end = s.size();
         if (s[i] == '-') {
             ++i;
             is_negative = true;
         }
         for (; i != end; ++i) {
-            mul_word(base_digit);
+            mul_word(10);
             add_word(s[i] - MIN_NUMERIC_CHARACTER);
         }
     }
 
-    [[maybe_unused]] explicit Integer(const std::string &s) { read(s); }
+    [[maybe_unused]] explicit Integer(const std::string &s) : is_negative(false) { read(s); }
 
-    inline word &operator[](size_t i) { return words[i]; } // access and modifies
+    [[nodiscard]] inline size_t size() const { return words.size(); }
 
-    const word &operator[](size_t i) const { return words[i]; } // access
+    inline word &operator[](size_t i) { return words[i]; }
+
+    const word &operator[](size_t i) const { return words[i]; }
 
     inline bool is_zero() const { return words.empty(); }
 
@@ -80,20 +87,21 @@ public:
         return *this;
     }
 
-    size_t bit_size() const {
-        if (words.empty()) return 0;
-        size_t last = words.size() - 1;
+    [[nodiscard]] size_t bit_size() const {
+        if (size() == 0) return 0;
+        size_t last = size() - 1;
         size_t result = word_bit_size((*this)[last]) + last * 64;
         return result;
     }
 
     static int cmp_abs(const Integer &a, const Integer &b) {
         if (a.words == b.words) return 0;
-        return std::lexicographical_compare(a.words.rbegin(), a.words.rend(), b.words.rbegin(), b.words.rend()) ? -1: 1;
+        return std::lexicographical_compare(a.words.rbegin(), a.words.rend(), b.words.rbegin(), b.words.rend()) ? -1
+                                                                                                                : 1;
     }
 
     static inline int cmp(const Integer &a, const Integer &b) {
-        if (a.words.empty() && b.words.empty()) return 0;
+        if (a.size() == 0 && b.size() == 0) return 0;
         else if (!a.is_negative && !b.is_negative) return +cmp_abs(a, b);
         else if (a.is_negative && b.is_negative) return -cmp_abs(a, b);
         else return a.is_negative && !b.is_negative ? -1 : +1;
@@ -112,17 +120,17 @@ public:
     }
 
     static word word_mul_hi(word a, word b) {
-        word a_high = a >> 32;
-        word a_low = a & UINT_MAX;
-        word b_high = b >> 32;
-        word b_low = b & UINT_MAX;
-        word tmp = ((a_low * b_low) >> 32) + a_high * b_low;
-        tmp = (tmp >> 32) + ((a_low * b_high + (tmp & UINT_MAX)) >> 32);
-        return tmp + a_high * b_high;
+        word a_hi = a >> 32;
+        word a_lo = a & UINT_MAX;
+        word b_hi = b >> 32;
+        word b_lo = b & UINT_MAX;
+        word tmp = ((a_lo * b_lo) >> 32) + a_hi * b_lo;
+        tmp = (tmp >> 32) + ((a_lo * b_hi + (tmp & UINT_MAX)) >> 32);
+        return tmp + a_hi * b_hi;
     }
 
     static Integer &add_unsigned_overwrite(Integer &a, const Integer &b) {
-        size_t i, na = a.words.size(), nb = b.words.size(), n = std::max(na, nb);
+        size_t i, na = a.size(), nb = b.size(), n = std::max(na, nb);
         a.words.resize(n);
         word carry = 0;
         for (i = 0; i < nb; i++) {
@@ -135,7 +143,7 @@ public:
     }
 
     static Integer &sub_unsigned_overwrite(Integer &a, const Integer &b) {
-        size_t i, na = a.words.size(), nb = b.words.size();
+        size_t i, na = a.size(), nb = b.size();
         word carry = 0;
         for (i = 0; i < nb; i++) {
             carry = sub_carry(&a[i], carry);
@@ -146,7 +154,7 @@ public:
     }
 
     static Integer native_multiple(const Integer &a, const Integer &b) {
-        size_t na = a.words.size(), nb = b.words.size(), nc = na + nb + 1;
+        size_t na = a.size(), nb = b.size(), nc = na + nb + 1;
         Integer c(nc, 0, a.is_negative ^ b.is_negative), carries(nc, 0);
         for (size_t ia = 0; ia < na; ia++) {
             for (size_t ib = 0; ib < nb; ib++) {
@@ -158,8 +166,12 @@ public:
         return add_unsigned_overwrite(c, carries).truncate();
     }
 
+
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "misc-no-recursion"
+
     static Integer karatsuba_multiple(const Integer &a, const Integer &b) {
-        size_t na = a.words.size(), nb = b.words.size(), n = std::max(na, nb), m2 = n / 2 + (n & 1);
+        size_t na = a.size(), nb = b.size(), n = std::max(na, nb), m2 = n / 2 + (n & 1);
         Integer a_parts[2], b_parts[2];
         split(a, a_parts, 2, m2);
         split(b, b_parts, 2, m2);
@@ -175,9 +187,17 @@ public:
         return result;
     }
 
+#pragma clang diagnostic pop
+
+
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "misc-no-recursion"
+
     static Integer multiple(const Integer &a, const Integer &b) {
-        return (a.words.size() > 20 && b.words.size() > 20 ? karatsuba_multiple(a, b) : native_multiple(a, b));
+        return (a.size() > 20 && b.size() > 20 ? karatsuba_multiple(a, b) : native_multiple(a, b));
     }
+
+#pragma clang diagnostic pop
 
     static Integer add_signed(const Integer &a, bool a_negative, const Integer &b, bool b_negative) {
         if (a_negative == b_negative) return add_unsigned(a, b).set_negative(a_negative);
@@ -188,23 +208,25 @@ public:
     Integer &operator>>=(size_t n_bits) {
         if (n_bits == 0) return *this;
         size_t n_words = n_bits / 64;
-        if (n_words >= words.size()) {
+        if (n_words >= size()) {
             words.resize(0);
             return *this;
         }
         n_bits %= 64;
         if (n_bits == 0) {
-            for (size_t i = 0; i < words.size() - n_words; i++) words[i] = words[i + n_words];
-        } else {
-            word high, low = words[n_words];
-            for (size_t i = 0; i < words.size() - n_words - 1; i++) {
-                high = words[i + n_words + 1];
-                words[i] = (high << (64 - n_bits)) | (low >> n_bits);
-                low = high;
+            for (size_t i = 0; i < size() - n_words; i++) {
+                (*this)[i] = (*this)[i + n_words];
             }
-            words[words.size() - n_words - 1] = low >> n_bits;
+        } else {
+            word hi, lo = (*this)[n_words];
+            for (size_t i = 0; i < size() - n_words - 1; i++) {
+                hi = (*this)[i + n_words + 1];
+                (*this)[i] = (hi << (64 - n_bits)) | (lo >> n_bits);
+                lo = hi;
+            }
+            (*this)[size() - n_words - 1] = lo >> n_bits;
         }
-        words.resize(words.size() - n_words);
+        words.resize(size() - n_words);
         return truncate();
     }
 
@@ -212,21 +234,21 @@ public:
         if (n_bits == 0) return *this;
         size_t n_words = n_bits / 64;
         n_bits %= 64;
-        size_t old_size = words.size();
+        size_t old_size = size();
         size_t n = old_size + n_words + (n_bits != 0);
         words.resize(n);
         if (n_bits == 0) {
-            for (size_t i = n; i-- > n_words;) words[i] = words[i - n_words];
+            for (size_t i = n; i-- > n_words;) (*this)[i] = (*this)[i - n_words];
         } else {
-            word low, high = 0;
+            word lo, hi = 0;
             for (size_t i = n - 1; i > n_words; i--) {
-                low = words[i - n_words - 1];
-                words[i] = (high << n_bits) | (low >> (64 - n_bits));
-                high = low;
+                lo = (*this)[i - n_words - 1];
+                (*this)[i] = (hi << n_bits) | (lo >> (64 - n_bits));
+                hi = lo;
             }
-            words[n_words] = high << n_bits;
+            (*this)[n_words] = hi << n_bits;
         }
-        for (size_t i = 0; i < n_words; i++) words[i] = 0;
+        for (size_t i = 0; i < n_words; i++) (*this)[i] = 0;
         return truncate();
     }
 
@@ -248,13 +270,47 @@ public:
         remainder.set_negative(generator.is_negative);
     }
 
+    static void div_mod_half_word(const Integer &generator, word denominator, Integer &quotient, word &remainder) {
+        remainder = 0;
+        Integer dst(generator.size(), 0);
+
+        for (size_t i = generator.size(); i-- > 0;) {
+            word dst_word = 0;
+            word src_word = generator[i];
+            word parts[2];
+            parts[0] = src_word >> 64 / 2;
+            parts[1] = src_word & UINT_MAX;
+            {
+                remainder <<= 64 / 2;
+                remainder |= parts[0];
+                word div_word = remainder / denominator;
+                word mod_word = remainder % denominator;
+                remainder = mod_word;
+                dst_word <<= 64 / 2;
+                dst_word |= div_word;
+            }
+            {
+                remainder <<= 64 / 2;
+                remainder |= parts[1];
+                word div_word = remainder / denominator;
+                word mod_word = remainder % denominator;
+                remainder = mod_word;
+                dst_word <<= 64 / 2;
+                dst_word |= div_word;
+            }
+
+            dst[i] = dst_word;
+        }
+
+        quotient = dst.truncate().set_negative(generator.is_negative);
+    }
 
     static void split(const Integer &a, Integer *parts, size_t n_parts, size_t n) {
         size_t i = 0;
         for (size_t k = 0; k < n_parts; k++) {
             Integer &part = parts[k];
             part.words.resize(n);
-            for (size_t j = 0; j < n && i < a.words.size(); j++) part[j] = a[i++];
+            for (size_t j = 0; j < n && i < a.size(); j++) part[j] = a[i++];
             part = part.truncate();
         }
     }
@@ -293,19 +349,19 @@ public:
 
     Integer &set_bit(int i) {
         size_t i_word = i / 64, i_bit = i % 64;
-        if (words.size() <= i_word) words.resize(i_word + 1);
-        words[i_word] |= ((word) 1) << i_bit;
+        if (size() <= i_word) words.resize(i_word + 1);
+        (*this)[i_word] |= ((word) 1) << i_bit;
         return *this;
     }
 
     Integer &mul_word(word b) {
         word carry = 0;
-        for (size_t i = 0; i < words.size(); i++) {
-            word a = words[i];
+        for (size_t i = 0; i < size(); i++) {
+            word a = (*this)[i];
             word tmp = a * b;
             carry = add_carry(&tmp, carry);
             carry += word_mul_hi(a, b);
-            words[i] = tmp;
+            (*this)[i] = tmp;
         }
         if (carry) words.push_back(carry);
         return truncate();
@@ -318,37 +374,29 @@ public:
         return truncate();
     }
 
-    static void div_mod_half_word(const Integer &generator, Integer &quotient, word &remainder) {
-        constexpr int half_word_bits = sizeof(word) * 8 / 2;
-        remainder = 0;
-        Integer dst(generator.words.size(), 0);
-        for (int i = static_cast<int>(generator.words.size()) - 1; i >= 0; --i) {
-            word dst_word = 0;
-            word src_word = generator.words[i];
-            for (int j: {1, 0}) {
-                word part = (src_word >> (half_word_bits * j)) & UINT_MAX;
-                remainder <<= half_word_bits;
-                remainder |= part;
-                dst_word <<= half_word_bits;
-                dst_word |= remainder / base_digit;
-                remainder %= base_digit;
-            }
-            dst.words[i] = dst_word;
-        }
-        quotient = dst.truncate().set_negative(generator.is_negative);
-    }
-
-    std::string to_string() const {
+    [[maybe_unused]] [[nodiscard]] std::string to_string() const {
         if (words.empty()) return "0";
         std::string result;
-        Integer generator(*this);
-        while (!generator.words.empty()) {
+        Integer tmp(*this);
+        while (tmp.size() != 0) {
             word remainder;
-            div_mod_half_word(generator, generator, remainder);
+            div_mod_half_word(tmp, 10, tmp, remainder);
             result.push_back(char(MIN_NUMERIC_CHARACTER + remainder));
         }
         if (is_negative) result.push_back('-');
         std::reverse(result.begin(), result.end());
+        return result;
+    }
+
+    [[maybe_unused]] [[nodiscard]] Integer pow(size_t exponent) const {
+        Integer result(1), p(*this);
+        for (; exponent; exponent >>= 1) {
+            if (exponent & 1) {
+                result *= p;
+                --exponent;
+            }
+            p *= p;
+        }
         return result;
     }
 
@@ -384,7 +432,12 @@ public:
 
     Integer operator-(const Integer &b) const { return sub(*this, b); }
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "misc-no-recursion"
+
     Integer operator*(const Integer &b) const { return multiple(*this, b); }
+
+#pragma clang diagnostic pop
 
     Integer operator/(const Integer &b) const {
         assert(!b.is_zero());
@@ -410,15 +463,25 @@ public:
     }
 
     friend std::ostream &operator<<(std::ostream &stream, const Integer &v) {
-        std::cout << v.to_string(); //
+        if (v.words.empty()) {
+            putchar(MIN_NUMERIC_CHARACTER);
+            return stream;
+        }
+        std::string result;
+        Integer tmp(v);
+        while (tmp.size() != 0) {
+            word remainder;
+            div_mod_half_word(tmp, 10, tmp, remainder);
+            result.push_back(char(MIN_NUMERIC_CHARACTER + remainder));
+        }
+        if (v.is_negative) putchar('-');
+        for (int i = (int) result.size() - 1; i >= 0; --i) putchar(result[i]);
         return stream;
     }
 
     template<class type>
     void operator*=(type v) {
-        CHECK_INT_TYPE(type);
         if (v < 0) is_negative = !is_negative;
         mul_word((word) v);
     }
 };
-
