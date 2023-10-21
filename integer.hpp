@@ -15,9 +15,10 @@
 class Integer {
 public:
     using word = uint64_t;
-    static constexpr word base_digit = 10;
+    static constexpr word BASE_DIGIT = 10;
     std::vector<word> words;
     bool is_negative = false;
+    static constexpr bool SAFE_INITIALIZATION = false;
 
     Integer() : is_negative(false) {};
 
@@ -55,9 +56,11 @@ public:
             is_negative = true;
         }
         for (; i != end; ++i) {
-            mul_word(base_digit);
+            mul_word(BASE_DIGIT);
+            if constexpr (SAFE_INITIALIZATION) {
+                assert(isdigit(s[i]));
+            }
             word carry = s[i] - MIN_NUMERIC_CHARACTER;
-            assert(carry < base_digit);
             if (words.empty()) words.resize(1);
             for (size_t j = 0; j < words.size() && carry; j++) carry = add_carry(&words[j], carry);
             if (carry) words.push_back(carry);
@@ -161,15 +164,25 @@ public:
         return add_unsigned_overwrite(c, carries).truncate();
     }
 
+    static void split(const Integer &a, Integer &lhs, Integer &rhs, size_t size_) {
+        size_t i = 0;
+        lhs.words.resize(size_);
+        for (size_t j = 0; j < size_ && i < a.words.size(); j++) lhs[j] = a[i++];
+        lhs = lhs.truncate();
+        rhs.words.resize(a.words.size() - size_);
+        for (size_t j = 0; j < a.words.size() - size_ && i < a.words.size(); j++) rhs[j] = a[i++];
+        rhs = rhs.truncate();
+    }
+
     static Integer karatsuba_multiple(const Integer &a, const Integer &b) {
         size_t na = a.words.size(), nb = b.words.size(), n = std::max(na, nb), m2 = n / 2 + (n & 1);
-        Integer a_parts[2], b_parts[2];
-        split(a, a_parts, 2, m2);
-        split(b, b_parts, 2, m2);
+        Integer a0, a1, b0, b1;
+        split(a, a0, a1, m2);
+        split(b, b0, b1, m2);
         m2 *= 64;
-        Integer z0 = a_parts[0] * b_parts[0];
-        Integer z1 = (a_parts[0] + a_parts[1]) * (b_parts[0] + b_parts[1]);
-        Integer z2 = a_parts[1] * b_parts[1];
+        Integer z0 = a0 * b0;
+        Integer z1 = (a0 + a1) * (b0 + b1);
+        Integer z2 = a1 * b1;
         Integer result = z2;
         result <<= m2;
         result += z1 - z2 - z0;
@@ -262,29 +275,27 @@ public:
         for (size_t i = generator.words.size(); i-- > 0;) {
             word dst_word = 0;
             word src_word = generator[i];
-            word parts[2] = {src_word >> 32, src_word & UINT_MAX};
-            for (int j: {0, 1}) {
-                remainder <<= 32;
-                remainder |= parts[j];
-                word div_word = remainder / base_digit;
-                word mod_word = remainder % base_digit;
-                remainder = mod_word;
-                dst_word <<= 32;
-                dst_word |= div_word;
-            }
+
+            word part_0 = src_word >> 32, part_1 = src_word & UINT_MAX;
+            remainder <<= 32;
+            remainder |= part_0;
+            word div_word = remainder / BASE_DIGIT;
+            word mod_word = remainder % BASE_DIGIT;
+            remainder = mod_word;
+            dst_word <<= 32;
+            dst_word |= div_word;
+
+            remainder <<= 32;
+            remainder |= part_1;
+            div_word = remainder / BASE_DIGIT;
+            mod_word = remainder % BASE_DIGIT;
+            remainder = mod_word;
+            dst_word <<= 32;
+            dst_word |= div_word;
+
             dst[i] = dst_word;
         }
         quotient = dst.truncate().set_negative(generator.is_negative);
-    }
-
-    static void split(const Integer &a, Integer *parts, size_t n_parts, size_t n) {
-        size_t i = 0;
-        for (size_t k = 0; k < n_parts; k++) {
-            Integer &part = parts[k];
-            part.words.resize(n);
-            for (size_t j = 0; j < n && i < a.words.size(); j++) part[j] = a[i++];
-            part = part.truncate();
-        }
     }
 
     static Integer div(const Integer &generator, const Integer &denominator) {
@@ -328,7 +339,7 @@ public:
 
     void mul_word(word b) {
         word carry = 0;
-        for (unsigned long long &i: words) {
+        for (word &i: words) {
             word a = i;
             word tmp = a * b;
             carry = add_carry(&tmp, carry);
