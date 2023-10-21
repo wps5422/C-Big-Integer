@@ -1,3 +1,17 @@
+#ifdef _MSC_VER
+#include <sstream>
+#endif
+
+#include <climits>
+#include <vector>
+#include <string>
+#include <iostream>
+#include <cassert>
+#include <chrono>
+#include <algorithm>
+
+#define CHECK_INT_TYPE(type) static_assert(std::is_same_v<type, int8_t> || std::is_same_v<type, int16_t> || std::is_same_v<type, int32_t> || std::is_same_v<type, int64_t>, "type must be int8, int16, int32, or int64")
+
 class Integer {
 public:
     using word = uint64_t;
@@ -161,11 +175,10 @@ public:
         result += z1 - z2 - z0;
         result <<= m2;
         result += z0;
-        std::cerr << "called\n";
         return result;
     }
 
-    static constexpr size_t threshold = 15;
+    static constexpr size_t threshold = 20;
 
     static Integer multiple(const Integer &a, const Integer &b) {
         return (a.words.size() > threshold && b.words.size() > threshold ? karatsuba_multiple(a, b) : native_multiple(a,
