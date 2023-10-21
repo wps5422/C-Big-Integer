@@ -1,22 +1,3 @@
-#ifdef _MSC_VER
-#include <sstream>
-#endif
-
-#include <climits>
-#include <vector>
-#include <string>
-#include <cstdlib>
-#include <iostream>
-#include <cassert>
-#include <chrono>
-
-#define CHECK_INT_TYPE(type) \
-    static_assert(std::is_same_v<type, int8_t> || \
-                  std::is_same_v<type, int16_t> || \
-                  std::is_same_v<type, int32_t> || \
-                  std::is_same_v<type, int64_t>, \
-                  "type must be int8, int16, int32, or int64")
-
 class Integer {
 public:
     using word = uint64_t;
@@ -70,7 +51,7 @@ public:
         }
     }
 
-    explicit Integer(const std::string &s) : is_negative(false) { read(s); }
+    [[maybe_unused]] explicit Integer(const std::string &s) : is_negative(false) { read(s); }
 
     [[maybe_unused]] explicit Integer(const char *s) : is_negative(false) { read((std::string) s); }
 
@@ -104,7 +85,7 @@ public:
     }
 
     static inline int cmp(const Integer &a, const Integer &b) {
-        if (a.words.size() == 0 && b.words.size() == 0) return 0;
+        if (a.words.empty() && b.words.empty()) return 0;
         else if (!a.is_negative && !b.is_negative) return +cmp_abs(a, b);
         else if (a.is_negative && b.is_negative) return -cmp_abs(a, b);
         else return a.is_negative && !b.is_negative ? -1 : +1;
@@ -187,7 +168,8 @@ public:
     static constexpr size_t threshold = 15;
 
     static Integer multiple(const Integer &a, const Integer &b) {
-        return (a.words.size() > threshold && b.words.size() > threshold ? karatsuba_multiple(a, b) : native_multiple(a, b));
+        return (a.words.size() > threshold && b.words.size() > threshold ? karatsuba_multiple(a, b) : native_multiple(a,
+                                                                                                                      b));
     }
 
     static Integer add_signed(const Integer &a, bool a_negative, const Integer &b, bool b_negative) {
@@ -333,12 +315,12 @@ public:
 
     void mul_word(word b) {
         word carry = 0;
-        for (size_t i = 0; i < words.size(); i++) {
-            word a = words[i];
+        for (unsigned long long &i: words) {
+            word a = i;
             word tmp = a * b;
             carry = add_carry(&tmp, carry);
             carry += word_mul_high(a, b);
-            words[i] = tmp;
+            i = tmp;
         }
         if (carry) words.push_back(carry);
         while (!words.empty() && words.back() == 0) words.pop_back();
@@ -348,7 +330,7 @@ public:
         if (words.empty()) return "0";
         std::string result;
         Integer tmp(*this);
-        while (tmp.words.size() != 0) {
+        while (!tmp.words.empty()) {
             word remainder;
             div_mod_half_word(tmp, tmp, remainder);
             result.push_back(char(MIN_NUMERIC_CHARACTER + remainder));
@@ -430,4 +412,3 @@ public:
         mul_word((word) number);
     }
 };
-
