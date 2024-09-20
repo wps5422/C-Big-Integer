@@ -76,7 +76,7 @@ public:
 
     [[maybe_unused]] explicit Integer(const std::string &s) : is_negative(false) { read(s); }
 
-    [[maybe_unused]] explicit Integer(const char *s) : is_negative(false) { read((std::string) s); }
+    [[maybe_unused]] explicit Integer(const char *s) : is_negative(false) { read(s); }
 
     word &operator[](const size_t i) { return words[i]; }
 
@@ -115,8 +115,10 @@ public:
         return a.is_negative && !b.is_negative ? -1 : +1;
     }
 
-    static size_t word_bit_size(word a) {
-        for (int i = 64 - 1; i >= 0; i--) if ((a >> i) & 1) return i + 1;
+    static size_t word_bit_size(const word a) {
+        for (int i = 64 - 1; i >= 0; i--) {
+            if ((a >> i) & 1) return i + 1;
+        }
         return 0;
     }
 
