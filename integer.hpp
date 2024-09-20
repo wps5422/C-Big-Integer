@@ -361,7 +361,7 @@ public:
         return *this;
     }
 
-    void mul_word(word b) {
+    void mul_word(const word b) {
         word carry = 0;
         for (word &i: words) {
             const word a = i;
@@ -434,9 +434,9 @@ public:
 
     Integer operator-() const { return Integer(*this).set_negative(!is_negative); }
 
-    Integer operator>>(size_t n_bits) const { return Integer(*this) >>= n_bits; }
+    Integer operator>>(const size_t n_bits) const { return Integer(*this) >>= n_bits; }
 
-    Integer operator<<(size_t n_bits) const { return Integer(*this) <<= n_bits; }
+    Integer operator<<(const size_t n_bits) const { return Integer(*this) <<= n_bits; }
 
     friend std::istream &operator>>(std::istream &stream, Integer &v) {
         std::string s;
