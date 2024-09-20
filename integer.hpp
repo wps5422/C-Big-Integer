@@ -38,6 +38,7 @@ public:
     static constexpr char MIN_NUMERIC_CHARACTER = '0';
 
     template<class type>
+    // ReSharper disable once CppNonExplicitConvertingConstructor
     Integer(type number) {
         CHECK_INT_TYPE(type);
         if (number < 0) {
@@ -54,7 +55,8 @@ public:
     void read(const std::string &s) {
         words.clear();
         this->is_negative = false;
-        size_t i = 0, end = s.size();
+        size_t i = 0;
+        const size_t end = s.size();
         if (s[i] == '-') {
             ++i;
             is_negative = true;
